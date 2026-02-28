@@ -2,9 +2,10 @@ const express = require('express');
 const cors = require('cors');
 const { Sequelize, DataTypes } = require('sequelize');
 
-const app = express();
-app.use(cors());
-app.use(express.json());
+// Rota principal (Porta de entrada)
+app.get('/', (req, res) => {
+  res.send('🚀 API do Sistema de Oficina está ONLINE na nuvem Koyeb!');
+});
 
 // 🔌 Conexão com o Banco de Dados (Nuvem - Aiven)
 // O sequelize PRECISA ser declarado aqui no topo!
