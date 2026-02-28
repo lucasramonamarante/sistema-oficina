@@ -2,13 +2,19 @@ const express = require('express');
 const cors = require('cors');
 const { Sequelize, DataTypes } = require('sequelize');
 
-// Rota principal (Porta de entrada)
+// 1. PRIMEIRO NÓS CRIAMOS O APP! (Essa linha tinha sumido)
+const app = express();
+
+// (Deixe esses dois aqui caso você use para receber dados em JSON)
+app.use(cors());
+app.use(express.json());
+
+// 2. AGORA SIM! Com o app criado, podemos criar a rota principal
 app.get('/', (req, res) => {
   res.send('🚀 API do Sistema de Oficina está ONLINE na nuvem Koyeb!');
 });
 
 // 🔌 Conexão com o Banco de Dados (Nuvem - Aiven)
-// O sequelize PRECISA ser declarado aqui no topo!
 const sequelize = new Sequelize(process.env.DATABASE_URL, {
   dialect: 'mysql'
 });
