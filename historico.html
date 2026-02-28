@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Histórico - Garagem 184</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        body { background-image: linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.8)), url('https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?q=80&w=1920&auto=format&fit=crop'); background-size: cover; background-position: center; background-attachment: fixed; font-family: Arial, sans-serif; color: white; margin: 0; display: flex; justify-content: center; padding-top: 30px; min-height: 100vh; }
+        .container { background-color: rgba(30, 30, 30, 0.9); padding: 30px; border-radius: 10px; width: 95%; max-width: 1200px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        h2 { text-align: center; color: #007bff; margin-top: 0; }
+        .barra-pesquisa { width: 100%; padding: 12px; margin-bottom: 20px; border-radius: 5px; border: none; background-color: #555; color: white; font-size: 16px; box-sizing: border-box; }
+        .barra-pesquisa::placeholder { color: #ccc; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #555; font-size: 14px; }
+        th { background-color: #444; color: #fff; }
+        .btn-acao { padding: 6px 10px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; margin-right: 2px; }
+        .btn-editar { background-color: #ffc107; color: black; }
+        .btn-apagar { background-color: #dc3545; color: white; }
+        .btn-pdf { background-color: #28a745; color: white; }
+        .btn-voltar { display: block; width: 200px; margin: 20px auto 0; padding: 10px; background-color: #6c757d; color: white; border-radius: 5px; text-align: center; text-decoration: none; font-weight: bold; }
+        .destaque { color: #17a2b8; font-weight: bold; }
+        .mecanico { color: #ffc107; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>📜 Histórico de Ordens de Serviço</h2>
+        
+        <input type="text" id="pesquisa" class="barra-pesquisa" placeholder="🔍 Pesquisar por Nº da OS, Cliente ou Placa..." onkeyup="filtrarTabela()">
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Nº da OS</th>
+                    <th>Data</th>
+                    <th>Cliente</th>
+                    <th>Veículo</th>
+                    <th>Mecânico</th> <th>Descrição</th>
+                    <th>Valor</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="tabela-os"></tbody>
+        </table>
+        <a href="index.html" class="btn-voltar">Voltar ao Painel</a>
+    </div>
+
+    <script>
+        const URL_SERVIDOR = 'http://localhost:3000';
+        let listaOS = [];
+
+        async function carregarHistorico() {
+            try {
+                const resposta = await fetch(`${URL_SERVIDOR}/ordens-servico`);
+                listaOS = await resposta.json();
+                const tbody = document.getElementById('tabela-os');
+                tbody.innerHTML = '';
+                
+                listaOS.forEach(os => {
+                    const dataFormatada = os.data ? os.data.split('-').reverse().join('/') : '-';
+                    const placa = os.Veiculo ? `${os.Veiculo.placa} (${os.Veiculo.modelo})` : 'Sem Veículo';
+                    const clienteNome = (os.Veiculo && os.Veiculo.Cliente) ? os.Veiculo.Cliente.nome : 'Desconhecido';
+                    const mecanico = os.mecanico ? os.mecanico : '-';
+                    
+                    tbody.innerHTML += `
+                        <tr class="linha-os">
+                            <td class="num-os"><strong>${os.numero_os}</strong></td>
+                            <td>${dataFormatada}</td>
+                            <td class="destaque texto-busca">${clienteNome}</td>
+                            <td class="texto-busca">${placa}</td>
+                            <td class="mecanico">${mecanico}</td>
+                            <td>${os.descricao}</td>
+                            <td>R$ ${os.valor ? parseFloat(os.valor).toFixed(2) : '0.00'}</td>
+                            <td>
+                                <button class="btn-acao btn-pdf" onclick="gerarPDF(${os.id})" title="Gerar PDF">📄</button>
+                                <button class="btn-acao btn-editar" onclick="editarOS(${os.id}, '${os.descricao}', ${os.valor})" title="Editar">✏️</button>
+                                <button class="btn-acao btn-apagar" onclick="apagarOS(${os.id})" title="Apagar">🗑️</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } catch (erro) { console.error("Erro:", erro); }
+        }
+
+        // 🔍 Filtro melhorado (agora busca por OS, Cliente ou Placa)
+        function filtrarTabela() {
+            const termo = document.getElementById('pesquisa').value.toLowerCase();
+            const linhas = document.querySelectorAll('.linha-os');
+            
+            linhas.forEach(linha => {
+                const textoLinha = linha.innerText.toLowerCase();
+                linha.style.display = textoLinha.includes(termo) ? '' : 'none';
+            });
+        }
+
+        // 📄 Gerador de PDF Atualizado com Mecânico e KM
+        function gerarPDF(id) {
+            const os = listaOS.find(item => item.id === id);
+            if (!os) return alert("OS não encontrada!");
+
+            const dataFormatada = os.data ? os.data.split('-').reverse().join('/') : '-';
+            const clienteNome = (os.Veiculo && os.Veiculo.Cliente) ? os.Veiculo.Cliente.nome : 'Não informado';
+            const clienteTel = (os.Veiculo && os.Veiculo.Cliente) ? os.Veiculo.Cliente.telefone : 'Não informado';
+            const veiculoInfo = os.Veiculo ? `${os.Veiculo.marca} ${os.Veiculo.modelo} - Placa: ${os.Veiculo.placa}` : 'Não informado';
+            const valorFormatado = os.valor ? parseFloat(os.valor).toFixed(2) : '0.00';
+            
+            // Novos campos:
+            const mecanico = os.mecanico || 'Não informado';
+            const kmEntrada = os.km_entrada ? `${os.km_entrada} km` : '-';
+            const kmSaida = os.km_saida ? `${os.km_saida} km` : '-';
+
+            const elementoRecibo = document.createElement('div');
+            elementoRecibo.innerHTML = `
+                <div style="padding: 40px; font-family: Arial, sans-serif; color: black; background: white;">
+                    <h1 style="text-align: center; color: #333;">🛠️ Garagem 184</h1>
+                    <h3 style="text-align: center; color: #555; margin-top: -10px;">Ordem de Serviço Nº ${os.numero_os}</h3>
+                    <hr style="border: 1px solid #ccc; margin: 20px 0;">
+                    
+                    <p><strong>Data:</strong> ${dataFormatada}</p>
+                    <p><strong>Cliente:</strong> ${clienteNome} | <strong>Telefone:</strong> ${clienteTel}</p>
+                    <p><strong>Veículo:</strong> ${veiculoInfo}</p>
+                    <p style="color: #0056b3;"><strong>Mecânico Resp:</strong> ${mecanico} | <strong>KM Entrada:</strong> ${kmEntrada} | <strong>KM Saída:</strong> ${kmSaida}</p>
+                    
+                    <hr style="border: 1px solid #ccc; margin: 20px 0;">
+                    
+                    <h3>Descrição do Serviço:</h3>
+                    <p style="background: #f9f9f9; padding: 15px; border-radius: 5px; border: 1px solid #eee; white-space: pre-wrap;">${os.descricao}</p>
+                    
+                    <h2 style="text-align: right; color: #28a745; margin-top: 30px;">Valor Total: R$ ${valorFormatado}</h2>
+                    
+                    <div style="margin-top: 80px; text-align: center;">
+                        <p>____________________________________________________</p>
+                        <p>Assinatura do Cliente</p>
+                    </div>
+                </div>
+            `;
+
+            const opcoesPDF = {
+                margin:       10,
+                filename:     `OS_${os.numero_os}_Garagem184.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2 },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            html2pdf().set(opcoesPDF).from(elementoRecibo).save();
+        }
+
+        async function apagarOS(id) {
+            if (confirm("🚨 Tem certeza que deseja APAGAR essa OS?")) {
+                await fetch(`${URL_SERVIDOR}/ordens-servico/${id}`, { method: 'DELETE' });
+                carregarHistorico();
+            }
+        }
+
+        async function editarOS(id, descAtual, valorAtual) {
+            const novaDesc = prompt("Nova descrição:", descAtual);
+            if (novaDesc === null) return;
+            const novoValor = prompt("Novo valor:", valorAtual);
+            if (novoValor === null) return;
+
+            await fetch(`${URL_SERVIDOR}/ordens-servico/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ descricao: novaDesc, valor: parseFloat(novoValor.replace(',', '.')) })
+            });
+            carregarHistorico();
+        }
+
+        window.onload = carregarHistorico;
+    </script>
+</body>
+</html>

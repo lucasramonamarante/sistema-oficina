@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastrar Cliente - Garagem 184</title>
+    <style>
+        body {
+            background-image: linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.8)), url('https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?q=80&w=1920&auto=format&fit=crop');
+            background-size: cover; background-position: center; font-family: Arial, sans-serif; color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0;
+        }
+        .container { background-color: rgba(30, 30, 30, 0.9); padding: 30px; border-radius: 10px; width: 400px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        h2 { text-align: center; color: #17a2b8; }
+        label { font-weight: bold; display: block; margin-top: 15px; }
+        input { width: 100%; padding: 10px; margin-top: 5px; border-radius: 5px; border: none; background-color: #555; color: white; box-sizing: border-box;}
+        button { width: 100%; padding: 12px; margin-top: 20px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; color: white; background-color: #17a2b8; }
+        .btn-voltar { background-color: #6c757d; display: block; text-align: center; text-decoration: none; padding: 12px; margin-top: 10px; border-radius: 5px; font-weight: bold; color: white; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>👤 Cadastrar Cliente</h2>
+        <form id="form-cliente">
+            <label>Nome Completo:</label>
+            <input type="text" id="nome" required>
+            <label>Telefone / WhatsApp:</label>
+            <input type="text" id="telefone" required>
+            <label>E-mail (Opcional):</label>
+            <input type="email" id="email">
+            <button type="submit">Salvar Cliente</button>
+        </form>
+        <a href="index.html" class="btn-voltar">Voltar ao Painel</a>
+    </div>
+    <script>
+        const URL_SERVIDOR = 'http://localhost:3000';
+
+        document.getElementById('form-cliente').addEventListener('submit', async (e) => {
+            e.preventDefault(); // Evita que a página recarregue do jeito antigo
+            
+            const dados = {
+                nome: document.getElementById('nome').value,
+                telefone: document.getElementById('telefone').value,
+                email: document.getElementById('email').value
+            };
+
+            try {
+                const resposta = await fetch(`${URL_SERVIDOR}/clientes`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dados)
+                });
+
+                if (resposta.ok) {
+                    alert("✅ Cliente cadastrado com sucesso!");
+                    document.getElementById('form-cliente').reset(); // Limpa os campos
+                } else {
+                    alert("❌ Erro ao cadastrar o cliente.");
+                }
+            } catch (erro) {
+                console.error("Erro:", erro);
+                alert("Erro de conexão com o servidor.");
+            }
+        });
+    </script>
+</body>
+</html>

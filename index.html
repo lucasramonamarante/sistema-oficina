@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel - Garagem 184</title>
+    <style>
+        body {
+            background-image: linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.8)), url('https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?q=80&w=1920&auto=format&fit=crop');
+            background-size: cover; background-position: center; background-attachment: fixed;
+            font-family: Arial, sans-serif; color: white; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh;
+        }
+        .painel {
+            background-color: rgba(30, 30, 30, 0.9); padding: 40px; border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5); text-align: center; width: 350px;
+        }
+        
+        /* 👇 ESTILO NOVO PARA O LOGO 👇 */
+        .logo {
+            max-width: 150px; /* Define o tamanho máximo da imagem */
+            height: auto; /* Mantém a proporção */
+            margin-bottom: 15px; /* Dá um espaço para o título */
+            border-radius: 10px; /* Opcional: deixa os cantos arredondados */
+        }
+
+        h1 { color: #28a745; margin-top: 0; margin-bottom: 30px; font-size: 28px; }
+        .menu-btn {
+            display: block; width: 100%; padding: 15px; margin-bottom: 15px;
+            border: none; border-radius: 5px; font-size: 16px; font-weight: bold;
+            cursor: pointer; text-decoration: none; color: white; box-sizing: border-box;
+        }
+        .btn-cliente { background-color: #17a2b8; }
+        .btn-veiculo { background-color: #fd7e14; }
+        .btn-ordem { background-color: #28a745; }
+        .btn-historico { background-color: #007bff; }
+        .menu-btn:hover { opacity: 0.8; }
+    </style>
+</head>
+<body>
+    <div class="painel">
+        <img src="logo.png" alt="Logo Garagem 184" class="logo">
+        
+        <h1>🛠️ Garagem 184</h1>
+        <a href="cadastro-cliente.html" class="menu-btn btn-cliente">👤 Cadastrar Cliente</a>
+        <a href="cadastro-veiculo.html" class="menu-btn btn-veiculo">🚗 Cadastrar Veículo</a>
+        <a href="ordem-servico.html" class="menu-btn btn-ordem">📋 Nova Ordem de Serviço</a>
+        <a href="historico.html" class="menu-btn btn-historico">📜 Consultar Histórico</a>
+    </div>
+</body>
+</html>

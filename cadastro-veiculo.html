@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastrar Veículo - Garagem 184</title>
+    <style>
+        body {
+            background-image: linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.8)), url('https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?q=80&w=1920&auto=format&fit=crop');
+            background-size: cover; background-position: center; font-family: Arial, sans-serif; color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0;
+        }
+        .container { background-color: rgba(30, 30, 30, 0.9); padding: 30px; border-radius: 10px; width: 400px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        h2 { text-align: center; color: #fd7e14; }
+        label { font-weight: bold; display: block; margin-top: 15px; }
+        input, select { width: 100%; padding: 10px; margin-top: 5px; border-radius: 5px; border: none; background-color: #555; color: white; box-sizing: border-box; font-size: 16px;}
+        button { width: 100%; padding: 12px; margin-top: 20px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; color: white; background-color: #fd7e14; }
+        .btn-voltar { background-color: #6c757d; display: block; text-align: center; text-decoration: none; padding: 12px; margin-top: 10px; border-radius: 5px; font-weight: bold; color: white; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>🚗 Cadastrar Veículo</h2>
+        <form id="form-veiculo">
+            <label>Selecione o Cliente (Dono):</label>
+            <select id="clienteId" required>
+                <option value="">Carregando clientes...</option>
+            </select>
+
+            <label>Placa:</label>
+            <input type="text" id="placa" placeholder="Ex: ABC1234" required>
+            
+            <label>Modelo:</label>
+            <input type="text" id="modelo" placeholder="Ex: Civic" required>
+            
+            <label>Marca:</label>
+            <input type="text" id="marca" placeholder="Ex: Honda">
+            
+            <label>Ano:</label>
+            <input type="number" id="ano" placeholder="Ex: 2020">
+            
+            <button type="submit">Salvar Veículo</button>
+        </form>
+        <a href="index.html" class="btn-voltar">Voltar ao Painel</a>
+    </div>
+
+    <script>
+        const URL_SERVIDOR = 'http://localhost:3000';
+
+        // Carrega a lista de clientes assim que a página abre
+        async function carregarClientes() {
+            try {
+                const resposta = await fetch(`${URL_SERVIDOR}/clientes`);
+                const clientes = await resposta.json();
+                const select = document.getElementById('clienteId');
+                
+                if (clientes.length === 0) {
+                    select.innerHTML = '<option value="">Nenhum cliente cadastrado ainda!</option>';
+                    return;
+                }
+
+                select.innerHTML = '<option value="">Selecione o dono do veículo...</option>';
+                clientes.forEach(c => {
+                    select.innerHTML += `<option value="${c.id}">${c.nome} (${c.telefone})</option>`;
+                });
+            } catch (erro) {
+                console.error("Erro ao carregar clientes:", erro);
+            }
+        }
+
+        document.getElementById('form-veiculo').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const dados = {
+                ClienteId: document.getElementById('clienteId').value, // Vincula ao dono!
+                placa: document.getElementById('placa').value.toUpperCase(),
+                modelo: document.getElementById('modelo').value,
+                marca: document.getElementById('marca').value,
+                ano: document.getElementById('ano').value
+            };
+
+            try {
+                const resposta = await fetch(`${URL_SERVIDOR}/veiculos`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dados)
+                });
+
+                if (resposta.ok) {
+                    alert("✅ Veículo cadastrado com sucesso!");
+                    document.getElementById('form-veiculo').reset();
+                } else {
+                    const erro = await resposta.json();
+                    alert(`❌ Erro: ${erro.erro || 'Falha ao cadastrar. A placa já existe?'}`);
+                }
+            } catch (erro) {
+                console.error("Erro:", erro);
+                alert("Erro de conexão com o servidor.");
+            }
+        });
+
+        // Chama a função ao carregar a página
+        window.onload = carregarClientes;
+    </script>
+</body>
+</html>
