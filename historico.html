@@ -36,7 +36,8 @@
                     <th>Data</th>
                     <th>Cliente</th>
                     <th>Veículo</th>
-                    <th>Mecânico</th> <th>Descrição</th>
+                    <th>Mecânico</th>
+                    <th>Descrição</th>
                     <th>Valor</th>
                     <th>Ações</th>
                 </tr>
@@ -47,9 +48,11 @@
     </div>
 
     <script>
+        // URL da sua API no Koyeb
         const URL_SERVIDOR = 'https://shiny-ranna-33techsentrycomunicacao-3810abc5.koyeb.app';
         let listaOS = [];
 
+        // Carregar os dados do banco
         async function carregarHistorico() {
             try {
                 const resposta = await fetch(`${URL_SERVIDOR}/ordens-servico`);
@@ -83,7 +86,7 @@
             } catch (erro) { console.error("Erro:", erro); }
         }
 
-        // 🔍 Filtro melhorado (agora busca por OS, Cliente ou Placa)
+        // Filtro de pesquisa
         function filtrarTabela() {
             const termo = document.getElementById('pesquisa').value.toLowerCase();
             const linhas = document.querySelectorAll('.linha-os');
@@ -94,7 +97,7 @@
             });
         }
 
-        // 📄 Gerador de PDF Atualizado com Mecânico e KM
+        // 📄 Gerador de PDF Definitivo
         function gerarPDF(id) {
             const os = listaOS.find(item => item.id === id);
             if (!os) return alert("OS não encontrada!");
@@ -105,15 +108,19 @@
             const veiculoInfo = os.Veiculo ? `${os.Veiculo.marca} ${os.Veiculo.modelo} - Placa: ${os.Veiculo.placa}` : 'Não informado';
             const valorFormatado = os.valor ? parseFloat(os.valor).toFixed(2) : '0.00';
             
-            // Novos campos:
             const mecanico = os.mecanico || 'Não informado';
             const kmEntrada = os.km_entrada ? `${os.km_entrada} km` : '-';
             const kmSaida = os.km_saida ? `${os.km_saida} km` : '-';
 
+            // Monta o visual do recibo
             const elementoRecibo = document.createElement('div');
+            
             elementoRecibo.innerHTML = `
                 <div style="padding: 40px; font-family: Arial, sans-serif; color: black; background: white;">
-                    <h1 style="text-align: center; color: #333;">🛠️ Garagem 184</h1>
+                    <div style="text-align: center;">
+                        <img src="logo.png" style="max-width: 150px; margin-bottom: 10px;" alt="Logo Garagem 184">
+                        <h1 style="color: #333; margin-top: 0;">🛠️ Garagem 184</h1>
+                    </div>
                     <h3 style="text-align: center; color: #555; margin-top: -10px;">Ordem de Serviço Nº ${os.numero_os}</h3>
                     <hr style="border: 1px solid #ccc; margin: 20px 0;">
                     
@@ -136,17 +143,20 @@
                 </div>
             `;
 
+            // Configurações do PDF
             const opcoesPDF = {
                 margin:       10,
                 filename:     `OS_${os.numero_os}_Garagem184.pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2 },
+                html2canvas:  { scale: 2, useCORS: true },
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
 
+            // Gera e baixa o arquivo
             html2pdf().set(opcoesPDF).from(elementoRecibo).save();
         }
 
+        // Apagar OS
         async function apagarOS(id) {
             if (confirm("🚨 Tem certeza que deseja APAGAR essa OS?")) {
                 await fetch(`${URL_SERVIDOR}/ordens-servico/${id}`, { method: 'DELETE' });
@@ -154,6 +164,7 @@
             }
         }
 
+        // Editar OS
         async function editarOS(id, descAtual, valorAtual) {
             const novaDesc = prompt("Nova descrição:", descAtual);
             if (novaDesc === null) return;
@@ -168,6 +179,7 @@
             carregarHistorico();
         }
 
+        // Inicializa a página
         window.onload = carregarHistorico;
     </script>
 </body>
