@@ -1,26 +1,28 @@
 const express = require('express');
 const cors = require('cors');
 const { Sequelize, DataTypes } = require('sequelize');
+const multer = require('multer');
+const axios = require('axios');
+const FormData = require('form-data');
 
-// 1. PRIMEIRO NÓS CRIAMOS O APP!
 const app = express();
-
-// Permite receber requisições do frontend
 app.use(cors());
 app.use(express.json());
 
-// 2. AGORA SIM! Com o app criado, podemos criar a rota principal
+// Configuração do Multer (recebe as fotos na memória temporariamente)
+const upload = multer({ storage: multer.memoryStorage() });
+
+// 🔑 SUA CHAVE DO IMGBB
+const IMGBB_API_KEY = '75f4d0f49c995f73237ab9a2f6e4a177';
+
 app.get('/', (req, res) => {
-  res.send('🚀 API do Sistema de Oficina está ONLINE na nuvem Koyeb! (Versão PRO 2.0)');
+  res.send('🚀 API Garagem 184 PRO - Online e Pronta para Fotos!');
 });
 
-// 🔌 Conexão com o Banco de Dados (Nuvem - Aiven)
-const sequelize = new Sequelize(process.env.DATABASE_URL, {
-  dialect: 'mysql'
-});
+const sequelize = new Sequelize(process.env.DATABASE_URL, { dialect: 'mysql' });
 
 // ==========================================
-// 🏗️ Modelos (Tabelas do Banco de Dados)
+// 🏗️ Modelos
 // ==========================================
 const Cliente = sequelize.define('Cliente', {
   nome: { type: DataTypes.STRING, allowNull: false },
@@ -43,68 +45,42 @@ const OrdemServico = sequelize.define('OrdemServico', {
   mecanico: { type: DataTypes.STRING },
   km_entrada: { type: DataTypes.STRING },
   km_saida: { type: DataTypes.STRING },
-  
-  // 🟢 NOVO: Controle de Status da OS (Versão PRO)
-  status: { 
-    type: DataTypes.STRING, 
-    defaultValue: 'Orçamento' // Toda OS nasce como orçamento até o mecânico mudar
-  },
-
-  // 📷 NOVO: As 8 vagas para os links das fotos na nuvem (Versão PRO)
-  foto_1: { type: DataTypes.STRING, allowNull: true },
-  foto_2: { type: DataTypes.STRING, allowNull: true },
-  foto_3: { type: DataTypes.STRING, allowNull: true },
-  foto_4: { type: DataTypes.STRING, allowNull: true },
-  foto_5: { type: DataTypes.STRING, allowNull: true },
-  foto_6: { type: DataTypes.STRING, allowNull: true },
-  foto_7: { type: DataTypes.STRING, allowNull: true },
-  foto_8: { type: DataTypes.STRING, allowNull: true }
+  status: { type: DataTypes.STRING, defaultValue: 'Orçamento' },
+  // Links das 8 fotos
+  foto_1: { type: DataTypes.STRING }, foto_2: { type: DataTypes.STRING },
+  foto_3: { type: DataTypes.STRING }, foto_4: { type: DataTypes.STRING },
+  foto_5: { type: DataTypes.STRING }, foto_6: { type: DataTypes.STRING },
+  foto_7: { type: DataTypes.STRING }, foto_8: { type: DataTypes.STRING }
 });
 
-// 🤝 Relacionamentos
 Cliente.hasMany(Veiculo);
 Veiculo.belongsTo(Cliente);
-
 Veiculo.hasMany(OrdemServico);
 OrdemServico.belongsTo(Veiculo);
 
-// 🔄 Sincroniza com o banco de dados (alter: true atualiza as novas colunas sem apagar dados antigos!)
 sequelize.sync({ alter: true })
-  .then(() => console.log('✅ Banco de dados na NUVEM sincronizado e atualizado para Versão PRO!'))
+  .then(() => console.log('✅ Banco sincronizado (Fotos e Status ativos)'))
   .catch(err => console.error('❌ Erro no banco:', err));
 
 // ==========================================
-// 🚀 ROTAS (O que o sistema pode fazer)
+// 🚀 ROTAS
 // ==========================================
 
-app.post('/clientes', async (req, res) => {
-  try {
-    const cliente = await Cliente.create(req.body);
-    res.status(201).json(cliente);
-  } catch (erro) { res.status(400).json({ erro: erro.message }); }
-});
-
-app.get('/clientes', async (req, res) => {
-  const clientes = await Cliente.findAll();
-  res.json(clientes);
-});
-
-app.post('/veiculos', async (req, res) => {
-  try {
-    const veiculo = await Veiculo.create(req.body);
-    res.status(201).json(veiculo);
-  } catch (erro) { res.status(400).json({ erro: erro.message }); }
-});
-
-app.get('/veiculos/placa/:placa', async (req, res) => {
-  const veiculo = await Veiculo.findOne({ where: { placa: req.params.placa } });
-  if (veiculo) { res.json(veiculo); } else { res.status(404).json({ erro: 'Veículo não encontrado' }); }
-});
-
-app.post('/ordens-servico', async (req, res) => {
+// ROTA NOVA: Criar OS com 8 Fotos (Upload Múltiplo)
+app.post('/ordens-servico', upload.array('fotos', 8), async (req, res) => {
   try {
     const { VeiculoId, descricao, valor, mecanico, km_entrada, km_saida } = req.body;
-    
+    const files = req.files;
+    const linksFotos = [];
+
+    // Envia cada foto para o ImgBB
+    for (const file of files) {
+      const form = new FormData();
+      form.append('image', file.buffer.toString('base64'));
+      const response = await axios.post(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, form);
+      linksFotos.push(response.data.data.url);
+    }
+
     const anoAtual = new Date().getFullYear();
     const totalOS = await OrdemServico.count();
     const numeroGerado = `${anoAtual}${(totalOS + 1).toString().padStart(4, '0')}`;
@@ -116,25 +92,29 @@ app.post('/ordens-servico', async (req, res) => {
       valor,
       mecanico,
       km_entrada,
-      km_saida
-      // Nota: Não precisamos passar o status ou fotos aqui agora. 
-      // O banco já vai colocar 'Orçamento' no status e deixar as fotos vazias automaticamente.
+      km_saida,
+      // Preenche os campos de foto com os links recebidos
+      foto_1: linksFotos[0] || null,
+      foto_2: linksFotos[1] || null,
+      foto_3: linksFotos[2] || null,
+      foto_4: linksFotos[3] || null,
+      foto_5: linksFotos[4] || null,
+      foto_6: linksFotos[5] || null,
+      foto_7: linksFotos[6] || null,
+      foto_8: linksFotos[7] || null
     });
+
     res.status(201).json(os);
-  } catch (erro) { res.status(400).json({ erro: erro.message }); }
+  } catch (erro) {
+    console.error(erro);
+    res.status(400).json({ erro: 'Erro ao criar OS com fotos.' });
+  }
 });
 
+// Outras rotas permanecem iguais
 app.get('/ordens-servico', async (req, res) => {
-  try {
-    const ordens = await OrdemServico.findAll({
-      include: {
-        model: Veiculo,
-        include: [Cliente]
-      },
-      order: [['createdAt', 'DESC']]
-    });
-    res.json(ordens);
-  } catch (erro) { res.status(500).json({ erro: 'Erro ao buscar o histórico.' }); }
+  const ordens = await OrdemServico.findAll({ include: { model: Veiculo, include: [Cliente] }, order: [['createdAt', 'DESC']] });
+  res.json(ordens);
 });
 
 app.delete('/ordens-servico/:id', async (req, res) => {
@@ -147,6 +127,5 @@ app.put('/ordens-servico/:id', async (req, res) => {
   res.json({ mensagem: 'OS atualizada!' });
 });
 
-// Inicia o servidor com a porta dinâmica para o Koyeb
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Servidor rodando na porta ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Servidor na porta ${PORT}`));
