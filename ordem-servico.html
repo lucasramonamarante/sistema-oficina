@@ -3,18 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nova O.S. - Garagem 184</title>
+    <title>Nova O.S. - Garagem 184 PRO</title>
     <style>
         body { background-image: linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.8)), url('https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?q=80&w=1920&auto=format&fit=crop'); background-size: cover; background-position: center; font-family: Arial, sans-serif; color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px 0; }
         .container { background-color: rgba(30, 30, 30, 0.9); padding: 30px; border-radius: 10px; width: 450px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
         h2 { text-align: center; color: #ffc107; }
         label { font-weight: bold; display: block; margin-top: 15px; }
-        input, textarea { width: 100%; padding: 10px; margin-top: 5px; border-radius: 5px; border: none; background-color: #555; color: white; box-sizing: border-box; font-size: 16px;}
+        input, textarea, input[type="file"] { width: 100%; padding: 10px; margin-top: 5px; border-radius: 5px; border: none; background-color: #555; color: white; box-sizing: border-box; font-size: 16px;}
         textarea { resize: vertical; height: 80px; }
-        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; } /* Para colocar as KM lado a lado */
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; } 
         button { width: 100%; padding: 12px; margin-top: 20px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; color: black; background-color: #ffc107; font-size: 16px;}
+        button:disabled { background-color: #888; cursor: not-allowed; }
         .btn-voltar { background-color: #6c757d; display: block; text-align: center; text-decoration: none; padding: 12px; margin-top: 10px; border-radius: 5px; font-weight: bold; color: white; }
         #info-veiculo { margin-top: 10px; padding: 10px; background-color: #28a745; border-radius: 5px; display: none; text-align: center; font-weight: bold;}
+        .foto-aviso { font-size: 12px; color: #ffc107; margin-top: 3px; display: block; }
     </style>
 </head>
 <body>
@@ -29,27 +31,33 @@
 
         <div id="info-veiculo"></div>
 
-        <form id="form-os" style="display: none;">
+        <form id="form-os" style="display: none;" enctype="multipart/form-data">
+            
             <label>Mecânico Responsável:</label>
-            <input type="text" id="mecanico" placeholder="Ex: João da Silva" required>
+            <input type="text" id="mecanico" name="mecanico" placeholder="Ex: João da Silva" required>
 
             <div class="grid-2">
                 <div>
                     <label>KM Entrada:</label>
-                    <input type="number" id="km_entrada" placeholder="Ex: 50000">
+                    <input type="number" id="km_entrada" name="km_entrada" placeholder="Ex: 50000">
                 </div>
                 <div>
                     <label>KM Saída:</label>
-                    <input type="number" id="km_saida" placeholder="Ex: 50020">
+                    <input type="number" id="km_saida" name="km_saida" placeholder="Ex: 50020">
                 </div>
             </div>
+
+            <label>Fotos do Veículo (Opcional):</label>
+            <input type="file" id="fotos" name="fotos" accept="image/*" multiple>
+            <span class="foto-aviso">Selecione até 8 fotos segurando o botão Ctrl no computador, ou marcando várias no celular.</span>
+
             <label>Descrição do Serviço:</label>
-            <textarea id="descricao" placeholder="Ex: Troca de óleo, filtro e pastilha de freio..." required></textarea>
+            <textarea id="descricao" name="descricao" placeholder="Ex: Troca de óleo, filtro e pastilha de freio..." required></textarea>
             
             <label>Valor Total (R$):</label>
-            <input type="number" id="valor" step="0.01" placeholder="Ex: 150.00" required>
+            <input type="number" id="valor" name="valor" step="0.01" placeholder="Ex: 150.00" required>
             
-            <button type="submit">Gerar Ordem de Serviço</button>
+            <button type="submit" id="btn-salvar">Gerar Ordem de Serviço</button>
         </form>
         <a href="index.html" class="btn-voltar">Voltar ao Painel</a>
     </div>
@@ -86,35 +94,55 @@
             e.preventDefault();
             if (!veiculoIdEncontrado) return alert("Busque um veículo primeiro!");
 
-            const dados = {
-                VeiculoId: veiculoIdEncontrado,
-                mecanico: document.getElementById('mecanico').value,
-                km_entrada: document.getElementById('km_entrada').value,
-                km_saida: document.getElementById('km_saida').value,
-                descricao: document.getElementById('descricao').value,
-                valor: parseFloat(document.getElementById('valor').value.replace(',', '.'))
-            };
+            // Validação para não deixar enviar mais que 8 fotos
+            const inputFotos = document.getElementById('fotos');
+            if (inputFotos.files.length > 8) {
+                return alert("❌ Você só pode enviar no máximo 8 fotos por OS.");
+            }
+
+            const btnSalvar = document.getElementById('btn-salvar');
+            btnSalvar.disabled = true;
+            btnSalvar.innerText = "Enviando fotos e salvando OS... Aguarde ⏳";
+
+            // PREPARAÇÃO DOS DADOS (Agora usando FormData para enviar os arquivos junto)
+            const formData = new FormData();
+            formData.append('VeiculoId', veiculoIdEncontrado);
+            formData.append('mecanico', document.getElementById('mecanico').value);
+            formData.append('km_entrada', document.getElementById('km_entrada').value);
+            formData.append('km_saida', document.getElementById('km_saida').value);
+            formData.append('descricao', document.getElementById('descricao').value);
+            formData.append('valor', document.getElementById('valor').value.replace(',', '.'));
+
+            // Adiciona as fotos ao FormData
+            for (let i = 0; i < inputFotos.files.length; i++) {
+                formData.append('fotos', inputFotos.files[i]);
+            }
 
             try {
                 const resposta = await fetch(`${URL_SERVIDOR}/ordens-servico`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(dados)
+                    body: formData // Não passamos o header "Content-Type", o navegador faz isso sozinho quando é FormData
                 });
 
                 if (resposta.ok) {
                     const osCriada = await resposta.json();
                     alert(`✅ Ordem de Serviço Nº ${osCriada.numero_os} gerada com sucesso!`);
+                    
                     document.getElementById('form-os').reset();
                     document.getElementById('form-os').style.display = 'none';
                     document.getElementById('info-veiculo').style.display = 'none';
                     document.getElementById('placa-busca').value = '';
                 } else {
-                    alert("❌ Erro ao gerar a Ordem de Serviço.");
+                    const erroJson = await resposta.json();
+                    alert("❌ Erro ao gerar a Ordem de Serviço: " + (erroJson.erro || ""));
                 }
             } catch (erro) {
                 console.error("Erro:", erro);
                 alert("Erro de conexão com o servidor.");
+            } finally {
+                // Restaura o botão ao normal
+                btnSalvar.disabled = false;
+                btnSalvar.innerText = "Gerar Ordem de Serviço";
             }
         });
     </script>
