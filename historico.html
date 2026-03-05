@@ -155,21 +155,79 @@
         // --- AS FUNÇÕES DE PDF, EDITAR E APAGAR CONTINUAM AS MESMAS ABAIXO ---
         // (Mantive para garantir que seu sistema continue funcionando 100%)
 
+        // 📄 Gerador de PDF Inteligente (Com ou Sem Fotos)
         function gerarPDF(id) {
             const os = listaOS.find(item => item.id === id);
-            if (!os) return;
+            if (!os) return alert("OS não encontrada!");
+
+            // 🧠 A MÁGICA ACONTECE AQUI: Pergunta se quer fotos
+            const incluirFotos = confirm("📸 Deseja incluir as FOTOS do veículo neste PDF?\n\n- Clique em 'OK' para gerar com fotos (Ideal para WhatsApp).\n- Clique em 'Cancelar' para gerar sem fotos (Ideal para Imprimir).");
+
+            const dataFormatada = os.data ? os.data.split('-').reverse().join('/') : '-';
+            const clienteNome = (os.Veiculo && os.Veiculo.Cliente) ? os.Veiculo.Cliente.nome : 'Não informado';
+            const veiculoInfo = os.Veiculo ? `${os.Veiculo.marca} ${os.Veiculo.modelo} - Placa: ${os.Veiculo.placa}` : 'Não informado';
+            const valorFormatado = os.valor ? parseFloat(os.valor).toFixed(2) : '0.00';
+
+            // Prepara a seção de fotos, se o usuário clicou em "OK"
+            let secaoFotosHTML = '';
+            if (incluirFotos) {
+                const fotos = [os.foto_1, os.foto_2, os.foto_3, os.foto_4, os.foto_5, os.foto_6, os.foto_7, os.foto_8].filter(url => url != null);
+                
+                if (fotos.length > 0) {
+                    secaoFotosHTML += `<div style="page-break-before: always; margin-top: 30px;">
+                                        <h3 style="color: #333; text-align: center; border-bottom: 2px solid #ccc; padding-bottom: 10px;">📸 Registros Fotográficos do Veículo</h3>
+                                        <div style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; margin-top: 20px;">`;
+                    
+                    fotos.forEach(fotoUrl => {
+                        secaoFotosHTML += `<img src="${fotoUrl}" style="width: 300px; height: 200px; object-fit: cover; border-radius: 8px; border: 1px solid #555;">`;
+                    });
+                    
+                    secaoFotosHTML += `</div></div>`;
+                }
+            }
+
+            // Monta o visual do recibo
             const elementoRecibo = document.createElement('div');
+            
             elementoRecibo.innerHTML = `
-                <div style="padding: 40px; font-family: Arial; color: black; background: white;">
-                    <h1 style="text-align: center;">🛠️ Garagem 184</h1>
-                    <h3 style="text-align: center;">Ordem de Serviço Nº ${os.numero_os}</h3>
-                    <hr>
-                    <p><strong>Cliente:</strong> ${os.Veiculo.Cliente.nome}</p>
-                    <p><strong>Veículo:</strong> ${os.Veiculo.marca} ${os.Veiculo.modelo} (${os.Veiculo.placa})</p>
-                    <p><strong>Descrição:</strong> ${os.descricao}</p>
-                    <h2 style="text-align: right; color: #28a745;">Valor: R$ ${parseFloat(os.valor).toFixed(2)}</h2>
-                </div>`;
-            html2pdf().set({ margin: 10, filename: `OS_${os.numero_os}.pdf`, html2canvas: { scale: 2 } }).from(elementoRecibo).save();
+                <div style="padding: 40px; font-family: Arial, sans-serif; color: black; background: white;">
+                    <div style="text-align: center;">
+                        <h1 style="color: #333; margin-top: 0;">🛠️ Garagem 184</h1>
+                    </div>
+                    <h3 style="text-align: center; color: #555; margin-top: -10px;">Ordem de Serviço Nº ${os.numero_os}</h3>
+                    <hr style="border: 1px solid #ccc; margin: 20px 0;">
+                    
+                    <p><strong>Data:</strong> ${dataFormatada}</p>
+                    <p><strong>Cliente:</strong> ${clienteNome}</p>
+                    <p><strong>Veículo:</strong> ${veiculoInfo}</p>
+                    
+                    <hr style="border: 1px solid #ccc; margin: 20px 0;">
+                    
+                    <h3>Descrição do Serviço:</h3>
+                    <p style="background: #f9f9f9; padding: 15px; border-radius: 5px; border: 1px solid #eee; white-space: pre-wrap;">${os.descricao}</p>
+                    
+                    <h2 style="text-align: right; color: #28a745; margin-top: 30px;">Valor Total: R$ ${valorFormatado}</h2>
+                    
+                    <div style="margin-top: 60px; text-align: center;">
+                        <p>____________________________________________________</p>
+                        <p>Assinatura do Cliente</p>
+                    </div>
+
+                    ${secaoFotosHTML}
+                </div>
+            `;
+
+            // Configurações do PDF
+            const opcoesPDF = {
+                margin:       10,
+                filename:     `OS_${os.numero_os}_Garagem184.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            // Gera e baixa o arquivo
+            html2pdf().set(opcoesPDF).from(elementoRecibo).save();
         }
 
         async function apagarOS(id) {
