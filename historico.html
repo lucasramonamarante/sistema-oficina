@@ -102,7 +102,6 @@
                     const placa = os.Veiculo ? `${os.Veiculo.placa} (${os.Veiculo.modelo})` : 'Sem Veículo';
                     const clienteNome = (os.Veiculo && os.Veiculo.Cliente) ? os.Veiculo.Cliente.nome : 'Desconhecido';
                     
-                    // Verifica se existem fotos (pelo menos a foto_1)
                     const temFotos = os.foto_1 ? true : false;
                     const botaoFotos = temFotos ? 
                         `<button class="btn-acao btn-fotos" onclick="verFotos(${os.id})" title="Ver Fotos">📷</button>` : '';
@@ -125,13 +124,11 @@
                     `;
                 });
 
-                // 🚀 Chama a função para atualizar os valores lá no topo da página
                 atualizarDashboard();
 
             } catch (erro) { console.error("Erro:", erro); }
         }
 
-        // 📈 Função para calcular e atualizar o Dashboard Financeiro
         function atualizarDashboard() {
             let totalOS = listaOS.length;
             
@@ -152,7 +149,6 @@
             titulo.innerText = `📸 Fotos da OS: ${os.numero_os}`;
             galeria.innerHTML = '';
 
-            // Lista todos os campos de foto possíveis
             const fotos = [os.foto_1, os.foto_2, os.foto_3, os.foto_4, os.foto_5, os.foto_6, os.foto_7, os.foto_8];
             
             fotos.forEach((url, index) => {
@@ -169,11 +165,8 @@
             document.getElementById('modalFotos').style.display = "block";
         }
 
-        function fecharModal() {
-            document.getElementById('modalFotos').style.display = "none";
-        }
+        function fecharModal() { document.getElementById('modalFotos').style.display = "none"; }
 
-        // Fechar modal ao clicar fora dele
         window.onclick = function(event) {
             const modal = document.getElementById('modalFotos');
             if (event.target == modal) fecharModal();
@@ -186,7 +179,7 @@
             });
         }
 
-        // 📄 Gerador de PDF Inteligente (Com ou Sem Fotos)
+        // 📄 Gerador de PDF Inteligente (AGORA COM KM E TÉCNICO)
         function gerarPDF(id) {
             const os = listaOS.find(item => item.id === id);
             if (!os) return alert("OS não encontrada!");
@@ -197,6 +190,11 @@
             const clienteNome = (os.Veiculo && os.Veiculo.Cliente) ? os.Veiculo.Cliente.nome : 'Não informado';
             const veiculoInfo = os.Veiculo ? `${os.Veiculo.marca} ${os.Veiculo.modelo} - Placa: ${os.Veiculo.placa}` : 'Não informado';
             const valorFormatado = os.valor ? parseFloat(os.valor).toFixed(2) : '0.00';
+            
+            // 👇 AQUI ESTÃO AS INFORMAÇÕES NOVAS 👇
+            const tecnico = os.mecanico ? os.mecanico : 'Não informado';
+            const kmEntrada = os.km_entrada ? os.km_entrada : '---';
+            const kmSaida = os.km_saida ? os.km_saida : '---';
 
             let secaoFotosHTML = '';
             if (incluirFotos) {
@@ -228,6 +226,8 @@
                     <p><strong>Data:</strong> ${dataFormatada}</p>
                     <p><strong>Cliente:</strong> ${clienteNome}</p>
                     <p><strong>Veículo:</strong> ${veiculoInfo}</p>
+                    <p><strong>Técnico Responsável:</strong> ${tecnico}</p>
+                    <p><strong>KM de Entrada:</strong> ${kmEntrada} &nbsp;&nbsp;|&nbsp;&nbsp; <strong>KM de Saída:</strong> ${kmSaida}</p>
                     
                     <hr style="border: 1px solid #ccc; margin: 20px 0;">
                     
@@ -264,15 +264,12 @@
         }
 
         async function editarOS(id) {
-            // 1. Busca os dados completos da OS na memória
             const os = listaOS.find(item => item.id === id);
             if (!os) return alert("OS não encontrada!");
 
-            // 2. Abre as caixinhas de pergunta já com os dados antigos
             const nDesc = prompt("Nova descrição:", os.descricao);
             const nVal = prompt("Novo valor:", os.valor);
             
-            // 3. Se o usuário não clicou em "Cancelar", envia para o servidor
             if (nDesc !== null && nVal !== null) {
                 await fetch(`${URL_SERVIDOR}/ordens-servico/${id}`, {
                     method: 'PUT',

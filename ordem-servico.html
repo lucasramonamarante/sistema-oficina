@@ -1,6 +1,12 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+    <script>
+        if (localStorage.getItem('autenticado_garagem184') !== 'sim') {
+            window.location.href = 'login.html';
+        }
+    </script>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nova O.S. - Garagem 184 PRO</title>
@@ -90,11 +96,56 @@
             }
         }
 
+        // 🚀 FUNÇÃO MÁGICA DE COMPRIMIR FOTOS 🚀
+        function comprimirImagem(file, maxWidth = 1000, maxHeight = 1000, quality = 0.7) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = event => {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = () => {
+                        let width = img.width;
+                        let height = img.height;
+
+                        // Calcula o novo tamanho mantendo a proporção
+                        if (width > height) {
+                            if (width > maxWidth) {
+                                height = Math.round(height * (maxWidth / width));
+                                width = maxWidth;
+                            }
+                        } else {
+                            if (height > maxHeight) {
+                                width = Math.round(width * (maxHeight / height));
+                                height = maxHeight;
+                            }
+                        }
+
+                        const canvas = document.createElement('canvas');
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+
+                        // Converte o canvas de volta para um arquivo leve (JPEG)
+                        canvas.toBlob((blob) => {
+                            const arquivoComprimido = new File([blob], file.name, {
+                                type: 'image/jpeg',
+                                lastModified: Date.now()
+                            });
+                            resolve(arquivoComprimido);
+                        }, 'image/jpeg', quality);
+                    };
+                    img.onerror = erro => reject(erro);
+                };
+                reader.onerror = erro => reject(erro);
+            });
+        }
+
         document.getElementById('form-os').addEventListener('submit', async (e) => {
             e.preventDefault();
             if (!veiculoIdEncontrado) return alert("Busque um veículo primeiro!");
 
-            // Validação para não deixar enviar mais que 8 fotos
             const inputFotos = document.getElementById('fotos');
             if (inputFotos.files.length > 8) {
                 return alert("❌ Você só pode enviar no máximo 8 fotos por OS.");
@@ -102,9 +153,8 @@
 
             const btnSalvar = document.getElementById('btn-salvar');
             btnSalvar.disabled = true;
-            btnSalvar.innerText = "Enviando fotos e salvando OS... Aguarde ⏳";
+            btnSalvar.innerText = "Preparando e Comprimindo Fotos... ⏳"; // Mudamos o texto para dar feedback!
 
-            // PREPARAÇÃO DOS DADOS (Agora usando FormData para enviar os arquivos junto)
             const formData = new FormData();
             formData.append('VeiculoId', veiculoIdEncontrado);
             formData.append('mecanico', document.getElementById('mecanico').value);
@@ -113,15 +163,32 @@
             formData.append('descricao', document.getElementById('descricao').value);
             formData.append('valor', document.getElementById('valor').value.replace(',', '.'));
 
-            // Adiciona as fotos ao FormData
-            for (let i = 0; i < inputFotos.files.length; i++) {
-                formData.append('fotos', inputFotos.files[i]);
+            // 🚀 PROCESSANDO AS FOTOS ANTES DE ENVIAR 🚀
+            try {
+                for (let i = 0; i < inputFotos.files.length; i++) {
+                    const fotoOriginal = inputFotos.files[i];
+                    // Só comprime se for imagem mesmo
+                    if (fotoOriginal.type.startsWith('image/')) {
+                        const fotoLeve = await comprimirImagem(fotoOriginal, 1000, 1000, 0.7); // Reduz para no máx 1000px e 70% de qualidade
+                        formData.append('fotos', fotoLeve);
+                    } else {
+                        formData.append('fotos', fotoOriginal);
+                    }
+                }
+            } catch (erro) {
+                console.error("Erro na compressão:", erro);
+                alert("Ocorreu um erro ao processar as fotos. Tente enviar novamente.");
+                btnSalvar.disabled = false;
+                btnSalvar.innerText = "Gerar Ordem de Serviço";
+                return;
             }
+
+            btnSalvar.innerText = "Enviando para o Servidor... 🚀";
 
             try {
                 const resposta = await fetch(`${URL_SERVIDOR}/ordens-servico`, {
                     method: 'POST',
-                    body: formData // Não passamos o header "Content-Type", o navegador faz isso sozinho quando é FormData
+                    body: formData
                 });
 
                 if (resposta.ok) {
@@ -140,7 +207,6 @@
                 console.error("Erro:", erro);
                 alert("Erro de conexão com o servidor.");
             } finally {
-                // Restaura o botão ao normal
                 btnSalvar.disabled = false;
                 btnSalvar.innerText = "Gerar Ordem de Serviço";
             }
