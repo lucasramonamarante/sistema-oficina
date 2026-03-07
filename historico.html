@@ -44,6 +44,17 @@
         
         <input type="text" id="pesquisa" class="barra-pesquisa" placeholder="🔍 Pesquisar por Nº da OS, Cliente ou Placa..." onkeyup="filtrarTabela()">
 
+        <div style="display: flex; gap: 20px; margin-bottom: 25px;">
+            <div style="flex: 1; background: #333; padding: 20px; border-radius: 8px; text-align: center; border-left: 5px solid #f1c40f; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
+                <h3 style="margin: 0; color: #ccc; font-size: 14px; text-transform: uppercase;">Veículos Atendidos</h3>
+                <h2 id="dash-qtd" style="margin: 10px 0 0 0; color: #fff; font-size: 32px;">0</h2>
+            </div>
+            
+            <div style="flex: 1; background: #333; padding: 20px; border-radius: 8px; text-align: center; border-left: 5px solid #2ecc71; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
+                <h3 style="margin: 0; color: #ccc; font-size: 14px; text-transform: uppercase;">Faturamento Bruto</h3>
+                <h2 id="dash-valor" style="margin: 10px 0 0 0; color: #fff; font-size: 32px;">R$ 0,00</h2>
+            </div>
+        </div>
         <table>
             <thead>
                 <tr>
@@ -107,7 +118,24 @@
                         </tr>
                     `;
                 });
+
+                // 🚀 Chama a função para atualizar os valores lá no topo da página
+                atualizarDashboard();
+
             } catch (erro) { console.error("Erro:", erro); }
+        }
+
+        // 📈 Função para calcular e atualizar o Dashboard Financeiro
+        function atualizarDashboard() {
+            let totalOS = listaOS.length;
+            
+            let valorTotal = listaOS.reduce((acumulador, os) => {
+                let valor = parseFloat(os.valor) || 0;
+                return acumulador + valor;
+            }, 0);
+            
+            document.getElementById('dash-qtd').innerText = totalOS;
+            document.getElementById('dash-valor').innerText = "R$ " + valorTotal.toFixed(2).replace('.', ',');
         }
 
         function verFotos(id) {
@@ -152,15 +180,11 @@
             });
         }
 
-        // --- AS FUNÇÕES DE PDF, EDITAR E APAGAR CONTINUAM AS MESMAS ABAIXO ---
-        // (Mantive para garantir que seu sistema continue funcionando 100%)
-
         // 📄 Gerador de PDF Inteligente (Com ou Sem Fotos)
         function gerarPDF(id) {
             const os = listaOS.find(item => item.id === id);
             if (!os) return alert("OS não encontrada!");
 
-            // 🧠 A MÁGICA ACONTECE AQUI: Pergunta se quer fotos
             const incluirFotos = confirm("📸 Deseja incluir as FOTOS do veículo neste PDF?\n\n- Clique em 'OK' para gerar com fotos (Ideal para WhatsApp).\n- Clique em 'Cancelar' para gerar sem fotos (Ideal para Imprimir).");
 
             const dataFormatada = os.data ? os.data.split('-').reverse().join('/') : '-';
@@ -168,7 +192,6 @@
             const veiculoInfo = os.Veiculo ? `${os.Veiculo.marca} ${os.Veiculo.modelo} - Placa: ${os.Veiculo.placa}` : 'Não informado';
             const valorFormatado = os.valor ? parseFloat(os.valor).toFixed(2) : '0.00';
 
-            // Prepara a seção de fotos, se o usuário clicou em "OK"
             let secaoFotosHTML = '';
             if (incluirFotos) {
                 const fotos = [os.foto_1, os.foto_2, os.foto_3, os.foto_4, os.foto_5, os.foto_6, os.foto_7, os.foto_8].filter(url => url != null);
@@ -186,7 +209,6 @@
                 }
             }
 
-            // Monta o visual do recibo
             const elementoRecibo = document.createElement('div');
             
             elementoRecibo.innerHTML = `
@@ -217,7 +239,6 @@
                 </div>
             `;
 
-            // Configurações do PDF
             const opcoesPDF = {
                 margin:       10,
                 filename:     `OS_${os.numero_os}_Garagem184.pdf`,
@@ -226,7 +247,6 @@
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
 
-            // Gera e baixa o arquivo
             html2pdf().set(opcoesPDF).from(elementoRecibo).save();
         }
 
