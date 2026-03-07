@@ -74,7 +74,11 @@ app.post('/clientes', async (req, res) => {
 });
 
 app.get('/clientes', async (req, res) => {
-    const lista = await Cliente.findAll(); res.json(lista);
+    // ATUALIZAÇÃO: Agora o banco de dados já devolve os clientes organizados em Ordem Alfabética (A-Z)
+    const lista = await Cliente.findAll({
+        order: [['nome', 'ASC']]
+    }); 
+    res.json(lista);
 });
 
 // --- ROTAS DE VEÍCULOS ---

@@ -15,6 +15,9 @@
         input, select { width: 100%; padding: 10px; margin-top: 5px; border-radius: 5px; border: none; background-color: #555; color: white; box-sizing: border-box; font-size: 16px;}
         button { width: 100%; padding: 12px; margin-top: 20px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; color: white; background-color: #fd7e14; }
         .btn-voltar { background-color: #6c757d; display: block; text-align: center; text-decoration: none; padding: 12px; margin-top: 10px; border-radius: 5px; font-weight: bold; color: white; }
+        
+        /* Estilo extra para o campo de busca ficar destacado */
+        #buscaCliente { margin-bottom: 10px; border: 1px solid #fd7e14; background-color: #222; }
     </style>
 </head>
 <body>
@@ -22,6 +25,8 @@
         <h2>🚗 Cadastrar Veículo</h2>
         <form id="form-veiculo">
             <label>Selecione o Cliente (Dono):</label>
+            <input type="text" id="buscaCliente" placeholder="🔍 Buscar cliente por nome...">
+            
             <select id="clienteId" required>
                 <option value="">Carregando clientes...</option>
             </select>
@@ -45,6 +50,7 @@
 
     <script>
         const URL_SERVIDOR = 'https://shiny-ranna-33techsentrycomunicacao-3810abc5.koyeb.app';
+        let opcoesClientesOriginais = []; // NOVO: Variável para guardar a lista original
 
         // Carrega a lista de clientes assim que a página abre
         async function carregarClientes() {
@@ -62,10 +68,33 @@
                 clientes.forEach(c => {
                     select.innerHTML += `<option value="${c.id}">${c.nome} (${c.telefone})</option>`;
                 });
+
+                // NOVO: Guarda as opções depois que elas chegam do servidor
+                opcoesClientesOriginais = Array.from(select.options);
+
             } catch (erro) {
                 console.error("Erro ao carregar clientes:", erro);
             }
         }
+
+        // NOVO: Lógica do Filtro de Busca
+        document.getElementById('buscaCliente').addEventListener('input', function() {
+            const termoDigitado = this.value.toLowerCase();
+            const select = document.getElementById('clienteId');
+            
+            // Limpa o select atual
+            select.innerHTML = '';
+            
+            // Adiciona de volta apenas os que batem com a pesquisa
+            opcoesClientesOriginais.forEach(opcao => {
+                const textoDaOpcao = opcao.text.toLowerCase();
+                
+                // Mostra se o texto contém a busca ou se é a opção vazia padrão
+                if (textoDaOpcao.includes(termoDigitado) || opcao.value === "") {
+                    select.appendChild(opcao.cloneNode(true));
+                }
+            });
+        });
 
         document.getElementById('form-veiculo').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -88,6 +117,12 @@
                 if (resposta.ok) {
                     alert("✅ Veículo cadastrado com sucesso!");
                     document.getElementById('form-veiculo').reset();
+                    // Limpa também o campo de busca após salvar
+                    document.getElementById('buscaCliente').value = '';
+                    // Restaura a lista completa
+                    const select = document.getElementById('clienteId');
+                    select.innerHTML = '';
+                    opcoesClientesOriginais.forEach(opcao => select.appendChild(opcao.cloneNode(true)));
                 } else {
                     const erro = await resposta.json();
                     alert(`❌ Erro: ${erro.erro || 'Falha ao cadastrar. A placa já existe?'}`);
