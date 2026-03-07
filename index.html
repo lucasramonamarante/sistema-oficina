@@ -1,6 +1,18 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+    <script>
+        if (localStorage.getItem('autenticado_garagem184') !== 'sim') {
+            window.location.href = 'login.html';
+        }
+        
+        // Função para o botão de Sair
+        function fazerLogout() {
+            localStorage.removeItem('autenticado_garagem184');
+            window.location.href = 'login.html';
+        }
+    </script>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel - Garagem 184</title>
@@ -47,6 +59,7 @@
         .btn-veiculo { background-color: #fd7e14; }
         .btn-ordem { background-color: #28a745; }
         .btn-historico { background-color: #007bff; }
+        .btn-sair { background-color: #dc3545; margin-top: 30px; }
         .menu-btn:hover { opacity: 0.8; }
     </style>
 </head>
@@ -59,6 +72,8 @@
         <a href="cadastro-veiculo.html" class="menu-btn btn-veiculo">🚗 Cadastrar Veículo</a>
         <a href="ordem-servico.html" class="menu-btn btn-ordem">📋 Nova Ordem de Serviço</a>
         <a href="historico.html" class="menu-btn btn-historico">📜 Consultar Histórico</a>
+        
+        <button onclick="fazerLogout()" class="menu-btn btn-sair">🚪 Sair do Sistema</button>
     </div>
 </body>
 </html>

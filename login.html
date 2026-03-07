@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Garagem 184 PRO</title>
+    <style>
+        body { 
+            background-image: linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.8)), url('https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?q=80&w=1920&auto=format&fit=crop'); 
+            background-size: cover; 
+            background-position: center; 
+            background-attachment: fixed; 
+            font-family: Arial, sans-serif; 
+            color: white; 
+            margin: 0; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+        }
+        .login-container { 
+            background-color: rgba(30, 30, 30, 0.95); 
+            padding: 40px; 
+            border-radius: 10px; 
+            width: 100%; 
+            max-width: 400px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.8); 
+            text-align: center;
+            border-top: 5px solid #007bff;
+        }
+        h2 { color: #007bff; margin-top: 0; margin-bottom: 30px; font-size: 28px;}
+        
+        .input-group { margin-bottom: 20px; text-align: left; }
+        .input-group label { display: block; margin-bottom: 8px; font-weight: bold; color: #ccc;}
+        .input-group input { 
+            width: 100%; 
+            padding: 12px; 
+            border-radius: 5px; 
+            border: 1px solid #555; 
+            background-color: #222; 
+            color: white; 
+            font-size: 16px; 
+            box-sizing: border-box; 
+        }
+        .input-group input:focus { border-color: #007bff; outline: none; }
+
+        .btn-entrar { 
+            width: 100%; 
+            padding: 14px; 
+            background-color: #007bff; 
+            color: white; 
+            border: none; 
+            border-radius: 5px; 
+            font-size: 18px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            transition: 0.3s; 
+            margin-top: 10px;
+        }
+        .btn-entrar:hover { background-color: #0056b3; transform: scale(1.02); }
+        
+        .erro-msg { color: #ff4d4d; margin-top: 15px; display: none; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="login-container">
+        <h2>🛠️ Garagem 184</h2>
+        <p style="color: #aaa; margin-bottom: 25px;">Acesso restrito ao sistema</p>
+
+        <div class="input-group">
+            <label for="email">E-mail</label>
+            <input type="email" id="email" placeholder="Digite seu e-mail" required>
+        </div>
+
+        <div class="input-group">
+            <label for="senha">Senha</label>
+            <input type="password" id="senha" placeholder="Digite sua senha" required>
+        </div>
+
+        <button class="btn-entrar" onclick="fazerLogin()">Entrar no Sistema</button>
+        <div id="mensagem-erro" class="erro-msg">E-mail ou senha incorretos!</div>
+    </div>
+
+    <script>
+        // 🚨 CONFIGURAÇÃO DA SENHA: Você pode alterar esses valores depois!
+        const EMAIL_CORRETO = "admin@garagem184.com";
+        const SENHA_CORRETA = "Garagem123";
+
+        function fazerLogin() {
+            const emailDigitado = document.getElementById('email').value;
+            const senhaDigitada = document.getElementById('senha').value;
+            const msgErro = document.getElementById('mensagem-erro');
+
+            if (emailDigitado === EMAIL_CORRETO && senhaDigitada === SENHA_CORRETA) {
+                // Se acertar, cria um "crachá virtual" no navegador e manda pro painel
+                localStorage.setItem('autenticado_garagem184', 'sim');
+                window.location.href = 'index.html';
+            } else {
+                // Se errar, mostra mensagem de erro
+                msgErro.style.display = 'block';
+            }
+        }
+
+        // Se o cara já estiver logado e tentar abrir o login, manda ele direto pro painel
+        window.onload = function() {
+            if (localStorage.getItem('autenticado_garagem184') === 'sim') {
+                window.location.href = 'index.html';
+            }
+        }
+    </script>
+</body>
+</html>
