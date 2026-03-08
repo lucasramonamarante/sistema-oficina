@@ -3,18 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cadastrar Cliente - Garagem 184</title>
+    <title>Cadastrar Cliente - Garagem 184 PRO</title>
     <style>
         body {
             background-image: linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.8)), url('https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?q=80&w=1920&auto=format&fit=crop');
             background-size: cover; background-position: center; font-family: Arial, sans-serif; color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0;
         }
-        .container { background-color: rgba(30, 30, 30, 0.9); padding: 30px; border-radius: 10px; width: 400px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-        h2 { text-align: center; color: #17a2b8; }
-        label { font-weight: bold; display: block; margin-top: 15px; }
-        input { width: 100%; padding: 10px; margin-top: 5px; border-radius: 5px; border: none; background-color: #555; color: white; box-sizing: border-box;}
-        button { width: 100%; padding: 12px; margin-top: 20px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; color: white; background-color: #17a2b8; }
-        .btn-voltar { background-color: #6c757d; display: block; text-align: center; text-decoration: none; padding: 12px; margin-top: 10px; border-radius: 5px; font-weight: bold; color: white; }
+        .container { background-color: rgba(30, 30, 30, 0.95); padding: 30px; border-radius: 10px; width: 400px; box-shadow: 0 4px 15px rgba(0,0,0,0.8); border-top: 5px solid #17a2b8;}
+        h2 { text-align: center; color: #17a2b8; margin-top: 0; }
+        label { font-weight: bold; display: block; margin-top: 15px; color: #ccc;}
+        input { width: 100%; padding: 12px; margin-top: 5px; border-radius: 5px; border: 1px solid #555; background-color: #222; color: white; box-sizing: border-box; font-size: 16px;}
+        input:focus { border-color: #17a2b8; outline: none; }
+        button { width: 100%; padding: 14px; margin-top: 25px; border: none; border-radius: 5px; font-weight: bold; font-size: 16px; cursor: pointer; color: white; background-color: #17a2b8; transition: 0.3s;}
+        button:hover { background-color: #138496; transform: scale(1.02); }
+        .btn-voltar { background-color: #6c757d; display: block; text-align: center; text-decoration: none; padding: 12px; margin-top: 10px; border-radius: 5px; font-weight: bold; color: white; transition: 0.3s;}
+        .btn-voltar:hover { background-color: #5a6268; }
     </style>
 </head>
 <body>
@@ -22,43 +25,96 @@
         <h2>👤 Cadastrar Cliente</h2>
         <form id="form-cliente">
             <label>Nome Completo:</label>
-            <input type="text" id="nome" required>
+            <input type="text" id="nome" placeholder="Ex: João da Silva" required>
+            
+            <label>CPF:</label>
+            <input type="text" id="cpf" placeholder="000.000.000-00" maxlength="14" required>
+
             <label>Telefone / WhatsApp:</label>
-            <input type="text" id="telefone" required>
+            <input type="text" id="telefone" placeholder="(00) 00000-0000" maxlength="15" required>
+            
             <label>E-mail (Opcional):</label>
-            <input type="email" id="email">
-            <button type="submit">Salvar Cliente</button>
+            <input type="email" id="email" placeholder="cliente@email.com">
+            
+            <button type="submit" id="btn-salvar">Salvar Cliente</button>
         </form>
         <a href="index.html" class="btn-voltar">Voltar ao Painel</a>
     </div>
+
     <script>
         const URL_SERVIDOR = 'https://shiny-ranna-33techsentrycomunicacao-3810abc5.koyeb.app';
 
+        // 🛠️ MÁSCARA DO CPF (Coloca pontos e traços automático)
+        document.getElementById('cpf').addEventListener('input', function(e) {
+            let valor = e.target.value.replace(/\D/g, ""); // Tira tudo que não é número
+            if (valor.length > 11) valor = valor.slice(0, 11);
+            valor = valor.replace(/(\d{3})(\d)/, "$1.$2");
+            valor = valor.replace(/(\d{3})(\d)/, "$1.$2");
+            valor = valor.replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+            e.target.value = valor;
+        });
+
+        // 🛠️ MÁSCARA DO TELEFONE (Coloca parênteses e traço automático)
+        document.getElementById('telefone').addEventListener('input', function(e) {
+            let valor = e.target.value.replace(/\D/g, "");
+            if (valor.length > 11) valor = valor.slice(0, 11);
+            valor = valor.replace(/^(\d{2})(\d)/g, "($1) $2");
+            valor = valor.replace(/(\d)(\d{4})$/, "$1-$2");
+            e.target.value = valor;
+        });
+
+        // 🚀 FUNÇÃO DE SALVAR COM TRAVA DE SEGURANÇA
         document.getElementById('form-cliente').addEventListener('submit', async (e) => {
-            e.preventDefault(); // Evita que a página recarregue do jeito antigo
+            e.preventDefault(); 
             
+            const btnSalvar = document.getElementById('btn-salvar');
+            btnSalvar.innerText = "Verificando..."; // Dá um feedback visual
+            btnSalvar.disabled = true;
+
+            const cpfDigitado = document.getElementById('cpf').value;
             const dados = {
                 nome: document.getElementById('nome').value,
+                cpf: cpfDigitado,
                 telefone: document.getElementById('telefone').value,
                 email: document.getElementById('email').value
             };
 
             try {
-                const resposta = await fetch(`${URL_SERVIDOR}/clientes`, {
+                // 1º PASSO: Busca os clientes para ver se o CPF já existe
+                const respostaBusca = await fetch(`${URL_SERVIDOR}/clientes`);
+                if (respostaBusca.ok) {
+                    const clientes = await respostaBusca.json();
+                    const clienteDuplicado = clientes.find(c => c.cpf === cpfDigitado);
+
+                    // Se achou alguém com o mesmo CPF, TRAVA TUDO!
+                    if (clienteDuplicado) {
+                        alert(`🛑 ALERTA: Este CPF já está cadastrado para o cliente: ${clienteDuplicado.nome}`);
+                        btnSalvar.innerText = "Salvar Cliente";
+                        btnSalvar.disabled = false;
+                        return; // O "return" faz o código parar aqui e não salvar!
+                    }
+                }
+
+                // 2º PASSO: Se não achou CPF repetido, envia para salvar
+                const respostaSalvar = await fetch(`${URL_SERVIDOR}/clientes`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(dados)
                 });
 
-                if (resposta.ok) {
+                if (respostaSalvar.ok) {
                     alert("✅ Cliente cadastrado com sucesso!");
-                    document.getElementById('form-cliente').reset(); // Limpa os campos
+                    document.getElementById('form-cliente').reset(); 
                 } else {
                     alert("❌ Erro ao cadastrar o cliente.");
                 }
             } catch (erro) {
                 console.error("Erro:", erro);
-                alert("Erro de conexão com o servidor.");
+                alert("Erro de conexão com o servidor. Verifique sua internet.");
+            } finally {
+                // Volta o botão ao normal
+                btnSalvar.innerText = "Salvar Cliente";
+                btnSalvar.disabled = false;
             }
         });
     </script>
