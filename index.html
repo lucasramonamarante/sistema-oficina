@@ -1,7 +1,15 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel - Garagem 184</title>
+
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#17a2b8">
+
     <script>
+        // Bloqueio de segurança
         if (localStorage.getItem('autenticado_garagem184') !== 'sim') {
             window.location.href = 'login.html';
         }
@@ -13,14 +21,8 @@
         }
     </script>
 
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel - Garagem 184</title>
-
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#fd7e14">
-
     <script>
+        // ⚙️ MOTOR DO APP (Service Worker)
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('sw.js')
@@ -41,12 +43,11 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.5); text-align: center; width: 350px;
         }
         
-        /* 👇 ESTILO NOVO PARA O LOGO 👇 */
         .logo {
-            max-width: 150px; /* Define o tamanho máximo da imagem */
-            height: auto; /* Mantém a proporção */
-            margin-bottom: 15px; /* Dá um espaço para o título */
-            border-radius: 10px; /* Opcional: deixa os cantos arredondados */
+            max-width: 150px;
+            height: auto;
+            margin-bottom: 15px;
+            border-radius: 10px;
         }
 
         h1 { color: #28a745; margin-top: 0; margin-bottom: 30px; font-size: 28px; }

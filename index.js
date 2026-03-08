@@ -1,149 +1,81 @@
-const express = require('express');
-const cors = require('cors');
-const { Sequelize, DataTypes } = require('sequelize');
-const multer = require('multer');
-const axios = require('axios');
-const FormData = require('form-data');
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <script>
+        // Bloqueio de segurança
+        if (localStorage.getItem('autenticado_garagem184') !== 'sim') {
+            window.location.href = 'login.html';
+        }
+        
+        // Função para o botão de Sair
+        function fazerLogout() {
+            localStorage.removeItem('autenticado_garagem184');
+            window.location.href = 'login.html';
+        }
+    </script>
 
-const app = express();
-app.use(cors());
-app.use(express.json());
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel - Garagem 184</title>
 
-const upload = multer({ storage: multer.memoryStorage() });
-const IMGBB_API_KEY = '75f4d0f49c995f73237ab9a2f6e4a177';
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#17a2b8">
 
-// Conexão Segura com o Banco (Aiven via Koyeb)
-const sequelize = new Sequelize(process.env.DATABASE_URL, { 
-    dialect: 'mysql',
-    logging: false 
-});
+    <script>
+        // ⚙️ MOTOR DO APP (Service Worker)
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('✅ PWA ativado! Motor rodando.', reg))
+                    .catch(err => console.error('❌ Erro no PWA:', err));
+            });
+        }
+    </script>
 
-// ==========================================
-// 🏗️ Modelos do Banco de Dados
-// ==========================================
-const Cliente = sequelize.define('Cliente', {
-    nome: { type: DataTypes.STRING, allowNull: false },
-    telefone: { type: DataTypes.STRING, allowNull: false },
-    email: { type: DataTypes.STRING }
-});
-
-const Veiculo = sequelize.define('Veiculo', {
-    placa: { type: DataTypes.STRING, allowNull: false, unique: true },
-    modelo: { type: DataTypes.STRING, allowNull: false },
-    marca: { type: DataTypes.STRING },
-    ano: { type: DataTypes.INTEGER }
-});
-
-const OrdemServico = sequelize.define('OrdemServico', {
-    numero_os: { type: DataTypes.STRING, allowNull: false, unique: true },
-    descricao: { type: DataTypes.TEXT, allowNull: false },
-    valor: { type: DataTypes.DECIMAL(10, 2) },
-    data: { type: DataTypes.DATEONLY, defaultValue: Sequelize.NOW },
-    mecanico: { type: DataTypes.STRING },
-    km_entrada: { type: DataTypes.STRING },
-    km_saida: { type: DataTypes.STRING },
-    status: { type: DataTypes.STRING, defaultValue: 'Orçamento' },
-    foto_1: { type: DataTypes.STRING }, foto_2: { type: DataTypes.STRING },
-    foto_3: { type: DataTypes.STRING }, foto_4: { type: DataTypes.STRING },
-    foto_5: { type: DataTypes.STRING }, foto_6: { type: DataTypes.STRING },
-    foto_7: { type: DataTypes.STRING }, foto_8: { type: DataTypes.STRING }
-});
-
-// Associações
-Cliente.hasMany(Veiculo);
-Veiculo.belongsTo(Cliente);
-Veiculo.hasMany(OrdemServico);
-OrdemServico.belongsTo(Veiculo);
-
-sequelize.sync({ alter: true })
-    .then(() => console.log('✅ Banco de Dados Sincronizado e Pronto!'))
-    .catch(err => console.error('❌ Erro ao sincronizar banco:', err));
-
-// ==========================================
-// 🚀 ROTAS (Caminhos do Servidor)
-// ==========================================
-
-app.get('/', (req, res) => {
-    res.send('🚀 API Garagem 184 PRO - Online e Completa!');
-});
-
-// --- ROTAS DE CLIENTES ---
-app.post('/clientes', async (req, res) => {
-    try { const c = await Cliente.create(req.body); res.status(201).json(c); }
-    catch (e) { res.status(400).json({ erro: 'Erro ao criar cliente' }); }
-});
-
-app.get('/clientes', async (req, res) => {
-    // ATUALIZAÇÃO: Agora o banco de dados já devolve os clientes organizados em Ordem Alfabética (A-Z)
-    const lista = await Cliente.findAll({
-        order: [['nome', 'ASC']]
-    }); 
-    res.json(lista);
-});
-
-// --- ROTAS DE VEÍCULOS ---
-app.post('/veiculos', async (req, res) => {
-    try { const v = await Veiculo.create(req.body); res.status(201).json(v); }
-    catch (e) { res.status(400).json({ erro: 'Placa já cadastrada ou erro nos dados.' }); }
-});
-
-// 🔍 ESSA É A ROTA QUE ESTAVA FALTANDO (Erro 404)!
-app.get('/veiculos/placa/:placa', async (req, res) => {
-    try {
-        const v = await Veiculo.findOne({ where: { placa: req.params.placa } });
-        if (v) res.json(v);
-        else res.status(404).json({ erro: 'Veículo não encontrado.' });
-    } catch (e) { res.status(500).json({ erro: 'Erro no servidor.' }); }
-});
-
-// --- ROTAS DE ORDEM DE SERVIÇO (Com Fotos) ---
-app.post('/ordens-servico', upload.array('fotos', 8), async (req, res) => {
-    try {
-        const { VeiculoId, descricao, valor, mecanico, km_entrada, km_saida } = req.body;
-        const files = req.files || [];
-        const linksFotos = [];
-
-        for (const file of files) {
-            const form = new FormData();
-            form.append('image', file.buffer.toString('base64'));
-            const response = await axios.post(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, form);
-            linksFotos.push(response.data.data.url);
+    <style>
+        body {
+            background-image: linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.8)), url('https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?q=80&w=1920&auto=format&fit=crop');
+            background-size: cover; background-position: center; background-attachment: fixed;
+            font-family: Arial, sans-serif; color: white; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh;
+        }
+        .painel {
+            background-color: rgba(30, 30, 30, 0.9); padding: 40px; border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5); text-align: center; width: 350px;
+        }
+        
+        /* 👇 ESTILO DO LOGO 👇 */
+        .logo {
+            max-width: 150px;
+            height: auto;
+            margin-bottom: 15px;
+            border-radius: 10px;
         }
 
-        const totalOS = await OrdemServico.count();
-        const numeroGerado = `${new Date().getFullYear()}${(totalOS + 1).toString().padStart(4, '0')}`;
-
-        const os = await OrdemServico.create({
-            numero_os: numeroGerado, VeiculoId, descricao, valor, mecanico, km_entrada, km_saida,
-            foto_1: linksFotos[0] || null, foto_2: linksFotos[1] || null,
-            foto_3: linksFotos[2] || null, foto_4: linksFotos[3] || null,
-            foto_5: linksFotos[4] || null, foto_6: linksFotos[5] || null,
-            foto_7: linksFotos[6] || null, foto_8: linksFotos[7] || null
-        });
-        res.status(201).json(os);
-    } catch (erro) {
-        console.error(erro);
-        res.status(400).json({ erro: 'Erro ao criar OS.' });
-    }
-});
-
-app.get('/ordens-servico', async (req, res) => {
-    const ordens = await OrdemServico.findAll({ 
-        include: { model: Veiculo, include: [Cliente] }, 
-        order: [['createdAt', 'DESC']] 
-    });
-    res.json(ordens);
-});
-
-app.delete('/ordens-servico/:id', async (req, res) => {
-    await OrdemServico.destroy({ where: { id: req.params.id } });
-    res.json({ mensagem: 'OS apagada!' });
-});
-
-app.put('/ordens-servico/:id', async (req, res) => {
-    await OrdemServico.update(req.body, { where: { id: req.params.id } });
-    res.json({ mensagem: 'OS atualizada!' });
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Servidor rodando na porta ${PORT}`));
+        h1 { color: #28a745; margin-top: 0; margin-bottom: 30px; font-size: 28px; }
+        .menu-btn {
+            display: block; width: 100%; padding: 15px; margin-bottom: 15px;
+            border: none; border-radius: 5px; font-size: 16px; font-weight: bold;
+            cursor: pointer; text-decoration: none; color: white; box-sizing: border-box;
+        }
+        .btn-cliente { background-color: #17a2b8; }
+        .btn-veiculo { background-color: #fd7e14; }
+        .btn-ordem { background-color: #28a745; }
+        .btn-historico { background-color: #007bff; }
+        .btn-sair { background-color: #dc3545; margin-top: 30px; }
+        .menu-btn:hover { opacity: 0.8; }
+    </style>
+</head>
+<body>
+    <div class="painel">
+        <img src="logo.png" alt="Logo Garagem 184" class="logo">
+        
+        <h1>🛠️ Garagem 184</h1>
+        <a href="cadastro-cliente.html" class="menu-btn btn-cliente">👤 Cadastrar Cliente</a>
+        <a href="cadastro-veiculo.html" class="menu-btn btn-veiculo">🚗 Cadastrar Veículo</a>
+        <a href="ordem-servico.html" class="menu-btn btn-ordem">📋 Nova Ordem de Serviço</a>
+        <a href="historico.html" class="menu-btn btn-historico">📜 Consultar Histórico</a>
+        
+        <button onclick="fazerLogout()" class="menu-btn btn-sair">🚪 Sair do Sistema</button>
+    </div>
+</body>
+</html>
