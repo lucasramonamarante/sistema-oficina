@@ -23,6 +23,7 @@ const sequelize = new Sequelize(process.env.DATABASE_URL, {
 // ==========================================
 const Cliente = sequelize.define('Cliente', {
     nome: { type: DataTypes.STRING, allowNull: false },
+    cpf: { type: DataTypes.STRING, unique: true }, // 🔒 GAVETA DO CPF ADICIONADA COM TRAVA DE REPETIÇÃO!
     telefone: { type: DataTypes.STRING, allowNull: false },
     email: { type: DataTypes.STRING }
 });
@@ -69,8 +70,17 @@ app.get('/', (req, res) => {
 
 // --- ROTAS DE CLIENTES ---
 app.post('/clientes', async (req, res) => {
-    try { const c = await Cliente.create(req.body); res.status(201).json(c); }
-    catch (e) { res.status(400).json({ erro: 'Erro ao criar cliente' }); }
+    try { 
+        const c = await Cliente.create(req.body); 
+        res.status(201).json(c); 
+    } catch (e) { 
+        // 🔒 TRAVA BLINDADA: Se o banco avisar que o CPF já existe, manda o erro pro site!
+        if (e.name === 'SequelizeUniqueConstraintError') {
+            res.status(400).json({ erro: 'Este CPF já está cadastrado no sistema!' });
+        } else {
+            res.status(400).json({ erro: 'Erro ao criar cliente' }); 
+        }
+    }
 });
 
 app.get('/clientes', async (req, res) => {
