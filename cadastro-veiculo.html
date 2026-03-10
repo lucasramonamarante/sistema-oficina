@@ -50,9 +50,8 @@
 
     <script>
         const URL_SERVIDOR = 'https://shiny-ranna-33techsentrycomunicacao-3810abc5.koyeb.app';
-        let opcoesClientesOriginais = []; // NOVO: Variável para guardar a lista original
+        let opcoesClientesOriginais = []; 
 
-        // Carrega a lista de clientes assim que a página abre
         async function carregarClientes() {
             try {
                 const resposta = await fetch(`${URL_SERVIDOR}/clientes`);
@@ -69,27 +68,19 @@
                     select.innerHTML += `<option value="${c.id}">${c.nome} (${c.telefone})</option>`;
                 });
 
-                // NOVO: Guarda as opções depois que elas chegam do servidor
                 opcoesClientesOriginais = Array.from(select.options);
-
             } catch (erro) {
                 console.error("Erro ao carregar clientes:", erro);
             }
         }
 
-        // NOVO: Lógica do Filtro de Busca
         document.getElementById('buscaCliente').addEventListener('input', function() {
             const termoDigitado = this.value.toLowerCase();
             const select = document.getElementById('clienteId');
-            
-            // Limpa o select atual
             select.innerHTML = '';
             
-            // Adiciona de volta apenas os que batem com a pesquisa
             opcoesClientesOriginais.forEach(opcao => {
                 const textoDaOpcao = opcao.text.toLowerCase();
-                
-                // Mostra se o texto contém a busca ou se é a opção vazia padrão
                 if (textoDaOpcao.includes(termoDigitado) || opcao.value === "") {
                     select.appendChild(opcao.cloneNode(true));
                 }
@@ -99,15 +90,32 @@
         document.getElementById('form-veiculo').addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            const dados = {
-                ClienteId: document.getElementById('clienteId').value, // Vincula ao dono!
-                placa: document.getElementById('placa').value.toUpperCase(),
-                modelo: document.getElementById('modelo').value,
-                marca: document.getElementById('marca').value,
-                ano: document.getElementById('ano').value
-            };
+            const placaDigitada = document.getElementById('placa').value.toUpperCase().trim();
+            const btnSalvar = e.target.querySelector('button[type="submit"]');
+            
+            btnSalvar.disabled = true;
+            btnSalvar.innerText = "Verificando Placa...";
 
             try {
+                // 🛑 TRAVA DE SEGURANÇA DA PLACA 🛑
+                const respostaBusca = await fetch(`${URL_SERVIDOR}/veiculos/placa/${placaDigitada}`);
+                if (respostaBusca.ok) {
+                    alert(`🛑 ALERTA: A placa ${placaDigitada} já tem ficha na nossa oficina!`);
+                    btnSalvar.disabled = false;
+                    btnSalvar.innerText = "Salvar Veículo";
+                    return; // Aborta o salvamento!
+                }
+
+                // Se a placa é nova, prossegue com o salvamento
+                btnSalvar.innerText = "Salvando...";
+                const dados = {
+                    ClienteId: document.getElementById('clienteId').value, 
+                    placa: placaDigitada,
+                    modelo: document.getElementById('modelo').value,
+                    marca: document.getElementById('marca').value,
+                    ano: document.getElementById('ano').value
+                };
+
                 const resposta = await fetch(`${URL_SERVIDOR}/veiculos`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -117,23 +125,24 @@
                 if (resposta.ok) {
                     alert("✅ Veículo cadastrado com sucesso!");
                     document.getElementById('form-veiculo').reset();
-                    // Limpa também o campo de busca após salvar
                     document.getElementById('buscaCliente').value = '';
-                    // Restaura a lista completa
+                    
                     const select = document.getElementById('clienteId');
                     select.innerHTML = '';
                     opcoesClientesOriginais.forEach(opcao => select.appendChild(opcao.cloneNode(true)));
                 } else {
                     const erro = await resposta.json();
-                    alert(`❌ Erro: ${erro.erro || 'Falha ao cadastrar. A placa já existe?'}`);
+                    alert(`❌ Erro: ${erro.erro || 'Falha ao cadastrar.'}`);
                 }
             } catch (erro) {
                 console.error("Erro:", erro);
                 alert("Erro de conexão com o servidor.");
+            } finally {
+                btnSalvar.disabled = false;
+                btnSalvar.innerText = "Salvar Veículo";
             }
         });
 
-        // Chama a função ao carregar a página
         window.onload = carregarClientes;
     </script>
 </body>

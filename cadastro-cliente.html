@@ -44,9 +44,9 @@
     <script>
         const URL_SERVIDOR = 'https://shiny-ranna-33techsentrycomunicacao-3810abc5.koyeb.app';
 
-        // 🛠️ MÁSCARA DO CPF (Coloca pontos e traços automático)
+        // 🛠️ MÁSCARA DO CPF
         document.getElementById('cpf').addEventListener('input', function(e) {
-            let valor = e.target.value.replace(/\D/g, ""); // Tira tudo que não é número
+            let valor = e.target.value.replace(/\D/g, ""); 
             if (valor.length > 11) valor = valor.slice(0, 11);
             valor = valor.replace(/(\d{3})(\d)/, "$1.$2");
             valor = valor.replace(/(\d{3})(\d)/, "$1.$2");
@@ -54,7 +54,7 @@
             e.target.value = valor;
         });
 
-        // 🛠️ MÁSCARA DO TELEFONE (Coloca parênteses e traço automático)
+        // 🛠️ MÁSCARA DO TELEFONE
         document.getElementById('telefone').addEventListener('input', function(e) {
             let valor = e.target.value.replace(/\D/g, "");
             if (valor.length > 11) valor = valor.slice(0, 11);
@@ -63,15 +63,18 @@
             e.target.value = valor;
         });
 
-        // 🚀 FUNÇÃO DE SALVAR COM TRAVA DE SEGURANÇA
+        // 🚀 FUNÇÃO DE SALVAR COM TRAVA DE CPF BLINDADA
         document.getElementById('form-cliente').addEventListener('submit', async (e) => {
             e.preventDefault(); 
             
             const btnSalvar = document.getElementById('btn-salvar');
-            btnSalvar.innerText = "Verificando..."; // Dá um feedback visual
+            btnSalvar.innerText = "Verificando..."; 
             btnSalvar.disabled = true;
 
             const cpfDigitado = document.getElementById('cpf').value;
+            // Limpa o CPF para ter só os números na hora de comparar
+            const cpfLimpoDigitado = cpfDigitado.replace(/\D/g, '');
+
             const dados = {
                 nome: document.getElementById('nome').value,
                 cpf: cpfDigitado,
@@ -80,22 +83,26 @@
             };
 
             try {
-                // 1º PASSO: Busca os clientes para ver se o CPF já existe
+                // 1º PASSO: Busca e compara SÓ OS NÚMEROS do CPF
                 const respostaBusca = await fetch(`${URL_SERVIDOR}/clientes`);
                 if (respostaBusca.ok) {
                     const clientes = await respostaBusca.json();
-                    const clienteDuplicado = clientes.find(c => c.cpf === cpfDigitado);
+                    
+                    const clienteDuplicado = clientes.find(c => {
+                        const cpfBanco = c.cpf ? c.cpf.replace(/\D/g, '') : '';
+                        return cpfBanco === cpfLimpoDigitado;
+                    });
 
-                    // Se achou alguém com o mesmo CPF, TRAVA TUDO!
+                    // Se achou, TRAVA!
                     if (clienteDuplicado) {
-                        alert(`🛑 ALERTA: Este CPF já está cadastrado para o cliente: ${clienteDuplicado.nome}`);
+                        alert(`🛑 ALERTA: O CPF ${cpfDigitado} já pertence a: ${clienteDuplicado.nome}`);
                         btnSalvar.innerText = "Salvar Cliente";
                         btnSalvar.disabled = false;
-                        return; // O "return" faz o código parar aqui e não salvar!
+                        return; // O retorno impede o salvamento
                     }
                 }
 
-                // 2º PASSO: Se não achou CPF repetido, envia para salvar
+                // 2º PASSO: Salva se passou no teste
                 const respostaSalvar = await fetch(`${URL_SERVIDOR}/clientes`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -112,7 +119,6 @@
                 console.error("Erro:", erro);
                 alert("Erro de conexão com o servidor. Verifique sua internet.");
             } finally {
-                // Volta o botão ao normal
                 btnSalvar.innerText = "Salvar Cliente";
                 btnSalvar.disabled = false;
             }
