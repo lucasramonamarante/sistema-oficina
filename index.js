@@ -56,7 +56,7 @@ Veiculo.belongsTo(Cliente);
 Veiculo.hasMany(OrdemServico);
 OrdemServico.belongsTo(Veiculo);
 
-sequelize.sync({ force: true })
+sequelize.sync({ alter: true })
     .then(() => console.log('✅ Banco de Dados Sincronizado e Pronto!'))
     .catch(err => console.error('❌ Erro ao sincronizar banco:', err));
 
