@@ -63,46 +63,58 @@
             e.target.value = valor;
         });
 
-        // 🚀 FUNÇÃO DE SALVAR COM TRAVA DE CPF BLINDADA
+        // 🚀 FUNÇÃO DE SALVAR COM TRAVA DE CPF BLINDADA (V2)
         document.getElementById('form-cliente').addEventListener('submit', async (e) => {
             e.preventDefault(); 
             
             const btnSalvar = document.getElementById('btn-salvar');
-            btnSalvar.innerText = "Verificando..."; 
+            btnSalvar.innerText = "Verificando CPF..."; 
             btnSalvar.disabled = true;
 
             const cpfDigitado = document.getElementById('cpf').value;
-            // Limpa o CPF para ter só os números na hora de comparar
+            // Limpa o CPF para ter SÓ os 11 números (ex: 11122233344)
             const cpfLimpoDigitado = cpfDigitado.replace(/\D/g, '');
 
             const dados = {
                 nome: document.getElementById('nome').value,
-                cpf: cpfDigitado,
+                cpf: cpfDigitado, 
                 telefone: document.getElementById('telefone').value,
                 email: document.getElementById('email').value
             };
 
             try {
-                // 1º PASSO: Busca e compara SÓ OS NÚMEROS do CPF
-                const respostaBusca = await fetch(`${URL_SERVIDOR}/clientes`);
+                // 1º PASSO: Busca os clientes com "no-store" para proibir o cache do navegador!
+                const respostaBusca = await fetch(`${URL_SERVIDOR}/clientes`, { cache: 'no-store' });
+                
                 if (respostaBusca.ok) {
                     const clientes = await respostaBusca.json();
                     
-                    const clienteDuplicado = clientes.find(c => {
-                        const cpfBanco = c.cpf ? c.cpf.replace(/\D/g, '') : '';
-                        return cpfBanco === cpfLimpoDigitado;
-                    });
+                    let clienteDuplicado = null;
+                    
+                    // 2º PASSO: Varredura total (Ignora maiúsculas/minúsculas e força formato de texto)
+                    for (let c of clientes) {
+                        // Tenta pegar o CPF de qualquer jeito que o backend tenha mandado
+                        let cpfDoBanco = String(c.cpf || c.Cpf || c.CPF || '').replace(/\D/g, '');
+                        
+                        if (cpfDoBanco === cpfLimpoDigitado && cpfLimpoDigitado.length === 11) {
+                            clienteDuplicado = c;
+                            break;
+                        }
+                    }
 
-                    // Se achou, TRAVA!
+                    // Se achou, TRAVA O CÓDIGO AQUI!
                     if (clienteDuplicado) {
                         alert(`🛑 ALERTA: O CPF ${cpfDigitado} já pertence a: ${clienteDuplicado.nome}`);
                         btnSalvar.innerText = "Salvar Cliente";
                         btnSalvar.disabled = false;
-                        return; // O retorno impede o salvamento
+                        return; // O 'return' mata a função e não deixa ir pro POST
                     }
+                } else {
+                    console.warn("Aviso: O servidor falhou ao listar clientes, não foi possível checar duplicidade.");
                 }
 
-                // 2º PASSO: Salva se passou no teste
+                // 3º PASSO: Se não achou nenhum repetido, ele envia para salvar!
+                btnSalvar.innerText = "Salvando...";
                 const respostaSalvar = await fetch(`${URL_SERVIDOR}/clientes`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -113,11 +125,12 @@
                     alert("✅ Cliente cadastrado com sucesso!");
                     document.getElementById('form-cliente').reset(); 
                 } else {
-                    alert("❌ Erro ao cadastrar o cliente.");
+                    const erroJson = await respostaSalvar.json();
+                    alert("❌ Erro ao cadastrar o cliente: " + (erroJson.erro || "O servidor recusou."));
                 }
             } catch (erro) {
-                console.error("Erro:", erro);
-                alert("Erro de conexão com o servidor. Verifique sua internet.");
+                console.error("Erro completo:", erro);
+                alert("Erro de conexão. Verifique se o backend no Koyeb está rodando.");
             } finally {
                 btnSalvar.innerText = "Salvar Cliente";
                 btnSalvar.disabled = false;
