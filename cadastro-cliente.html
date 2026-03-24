@@ -26,9 +26,6 @@
         <form id="form-cliente">
             <label>Nome Completo:</label>
             <input type="text" id="nome" placeholder="Ex: João da Silva" required>
-            
-            <label>CPF:</label>
-            <input type="text" id="cpf" placeholder="000.000.000-00" maxlength="14" required>
 
             <label>Telefone / WhatsApp:</label>
             <input type="text" id="telefone" placeholder="(00) 00000-0000" maxlength="15" required>
@@ -44,16 +41,6 @@
     <script>
         const URL_SERVIDOR = 'https://shiny-ranna-33techsentrycomunicacao-3810abc5.koyeb.app';
 
-        // 🛠️ MÁSCARA DO CPF
-        document.getElementById('cpf').addEventListener('input', function(e) {
-            let valor = e.target.value.replace(/\D/g, ""); 
-            if (valor.length > 11) valor = valor.slice(0, 11);
-            valor = valor.replace(/(\d{3})(\d)/, "$1.$2");
-            valor = valor.replace(/(\d{3})(\d)/, "$1.$2");
-            valor = valor.replace(/(\d{3})(\d{1,2})$/, "$1-$2");
-            e.target.value = valor;
-        });
-
         // 🛠️ MÁSCARA DO TELEFONE
         document.getElementById('telefone').addEventListener('input', function(e) {
             let valor = e.target.value.replace(/\D/g, "");
@@ -63,22 +50,21 @@
             e.target.value = valor;
         });
 
-        // 🚀 FUNÇÃO DE SALVAR COM TRAVA DE CPF BLINDADA (V2)
+        // 🚀 FUNÇÃO DE SALVAR COM TRAVA DE TELEFONE BLINDADA (V3)
         document.getElementById('form-cliente').addEventListener('submit', async (e) => {
             e.preventDefault(); 
             
             const btnSalvar = document.getElementById('btn-salvar');
-            btnSalvar.innerText = "Verificando CPF..."; 
+            btnSalvar.innerText = "Verificando Telefone..."; 
             btnSalvar.disabled = true;
 
-            const cpfDigitado = document.getElementById('cpf').value;
-            // Limpa o CPF para ter SÓ os 11 números (ex: 11122233344)
-            const cpfLimpoDigitado = cpfDigitado.replace(/\D/g, '');
+            const telefoneDigitado = document.getElementById('telefone').value;
+            // Limpa o Telefone para ter SÓ os números (ex: 11999998888) para a comparação
+            const telefoneLimpoDigitado = telefoneDigitado.replace(/\D/g, '');
 
             const dados = {
                 nome: document.getElementById('nome').value,
-                cpf: cpfDigitado, 
-                telefone: document.getElementById('telefone').value,
+                telefone: telefoneDigitado,
                 email: document.getElementById('email').value
             };
 
@@ -91,12 +77,13 @@
                     
                     let clienteDuplicado = null;
                     
-                    // 2º PASSO: Varredura total (Ignora maiúsculas/minúsculas e força formato de texto)
+                    // 2º PASSO: Varredura total pelo TELEFONE
                     for (let c of clientes) {
-                        // Tenta pegar o CPF de qualquer jeito que o backend tenha mandado
-                        let cpfDoBanco = String(c.cpf || c.Cpf || c.CPF || '').replace(/\D/g, '');
+                        // Limpa o telefone que veio do banco de dados para comparar apenas os números
+                        let telefoneDoBanco = String(c.telefone || c.Telefone || '').replace(/\D/g, '');
                         
-                        if (cpfDoBanco === cpfLimpoDigitado && cpfLimpoDigitado.length === 11) {
+                        // Checa se os números batem e garante que tem pelo menos 10 dígitos (DDD + número)
+                        if (telefoneDoBanco === telefoneLimpoDigitado && telefoneLimpoDigitado.length >= 10) {
                             clienteDuplicado = c;
                             break;
                         }
@@ -104,7 +91,7 @@
 
                     // Se achou, TRAVA O CÓDIGO AQUI!
                     if (clienteDuplicado) {
-                        alert(`🛑 ALERTA: O CPF ${cpfDigitado} já pertence a: ${clienteDuplicado.nome}`);
+                        alert(`🛑 ALERTA: O Telefone ${telefoneDigitado} já está cadastrado para: ${clienteDuplicado.nome}`);
                         btnSalvar.innerText = "Salvar Cliente";
                         btnSalvar.disabled = false;
                         return; // O 'return' mata a função e não deixa ir pro POST
