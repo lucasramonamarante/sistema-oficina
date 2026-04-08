@@ -13,10 +13,18 @@ app.use(express.json());
 const upload = multer({ storage: multer.memoryStorage() });
 const IMGBB_API_KEY = '75f4d0f49c995f73237ab9a2f6e4a177';
 
-// Conexão Segura com o Banco (Aiven via Koyeb)
+// ==========================================
+// 🔌 Conexão Segura com o Banco (Agora no TiDB Cloud)
+// ==========================================
 const sequelize = new Sequelize(process.env.DATABASE_URL, { 
     dialect: 'mysql',
-    logging: false 
+    logging: false,
+    dialectOptions: {
+        ssl: {
+            require: true,
+            rejectUnauthorized: true // Exigência de segurança do TiDB
+        }
+    }
 });
 
 // ==========================================
@@ -64,7 +72,7 @@ Veiculo.hasMany(OrdemServico);
 OrdemServico.belongsTo(Veiculo);
 
 sequelize.sync({ alter: true })
-    .then(() => console.log('✅ Banco de Dados Sincronizado e Pronto!'))
+    .then(() => console.log('✅ Banco de Dados TiDB Sincronizado e Pronto!'))
     .catch(err => console.error('❌ Erro ao sincronizar banco:', err));
 
 // ==========================================
@@ -72,23 +80,21 @@ sequelize.sync({ alter: true })
 // ==========================================
 
 app.get('/', (req, res) => {
-    res.send('🚀 API Garagem 184 PRO - Online e Completa!');
+    res.send('🚀 API Garagem 184 PRO - Online, Segura e Conectada ao TiDB!');
 });
 
-// --- ROTAS DE AUTENTICAÇÃO (LOGIN) ---
+// --- ROTAS DE AUTENTICAÇÃO E SENHA ---
 
-// 1. Rota para CRIAR o administrador (O cliente vai usar isso só 1 vez)
+// 1. Rota para CRIAR o administrador (Setup Inicial)
 app.post('/setup-admin', async (req, res) => {
     try {
         const { email, senha } = req.body;
         
-        // Verifica se já existe um admin (para não deixar criarem mais de um)
         const adminExistente = await Admin.findOne();
         if (adminExistente) {
             return res.status(400).json({ erro: 'O administrador já foi criado!' });
         }
 
-        // Embaralha a senha antes de salvar
         const salt = await bcrypt.genSalt(10);
         const senhaCriptografada = await bcrypt.hash(senha, salt);
 
@@ -99,27 +105,52 @@ app.post('/setup-admin', async (req, res) => {
     }
 });
 
-// 2. Rota de LOGIN (Vai conferir se a senha bate com a do banco)
+// 2. Rota de LOGIN
 app.post('/login', async (req, res) => {
     try {
         const { email, senha } = req.body;
         
-        // Procura o email no banco
         const admin = await Admin.findOne({ where: { email } });
         if (!admin) {
             return res.status(404).json({ erro: 'E-mail não encontrado.' });
         }
 
-        // Compara a senha digitada com a senha embaralhada do banco
         const senhaCorreta = await bcrypt.compare(senha, admin.senha);
         if (!senhaCorreta) {
             return res.status(401).json({ erro: 'Senha incorreta!' });
         }
 
-        // Se deu tudo certo, libera o acesso
         res.status(200).json({ mensagem: 'Login aprovado!', token: 'acesso-liberado-garagem184' });
     } catch (erro) {
         res.status(500).json({ erro: 'Erro no servidor.' });
+    }
+});
+
+// 3. 🆕 Rota para ALTERAR A SENHA (Autonomia para o cliente)
+app.post('/alterar-senha', async (req, res) => {
+    try {
+        const { email, senhaAtual, novaSenha } = req.body;
+
+        const admin = await Admin.findOne({ where: { email: email } });
+        if (!admin) {
+            return res.status(404).json({ erro: 'Administrador não encontrado.' });
+        }
+
+        const senhaValida = await bcrypt.compare(senhaAtual, admin.senha);
+        if (!senhaValida) {
+            return res.status(401).json({ erro: 'A senha atual está incorreta.' });
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        const novaSenhaCriptografada = await bcrypt.hash(novaSenha, salt);
+
+        admin.senha = novaSenhaCriptografada;
+        await admin.save();
+
+        res.json({ mensagem: '✅ Senha alterada com sucesso!' });
+    } catch (erro) {
+        console.error('Erro ao alterar senha:', erro);
+        res.status(500).json({ erro: 'Erro interno no servidor ao alterar senha.' });
     }
 });
 
@@ -129,7 +160,6 @@ app.post('/clientes', async (req, res) => {
         const c = await Cliente.create(req.body); 
         res.status(201).json(c); 
     } catch (e) { 
-        // 🔒 TRAVA BLINDADA: Se o banco avisar que o telefone já existe, manda o erro pro site!
         if (e.name === 'SequelizeUniqueConstraintError') {
             res.status(400).json({ erro: 'Este TELEFONE já está cadastrado no sistema!' });
         } else {
@@ -139,10 +169,7 @@ app.post('/clientes', async (req, res) => {
 });
 
 app.get('/clientes', async (req, res) => {
-    // ATUALIZAÇÃO: Agora o banco de dados já devolve os clientes organizados em Ordem Alfabética (A-Z)
-    const lista = await Cliente.findAll({
-        order: [['nome', 'ASC']]
-    }); 
+    const lista = await Cliente.findAll({ order: [['nome', 'ASC']] }); 
     res.json(lista);
 });
 
@@ -152,7 +179,6 @@ app.post('/veiculos', async (req, res) => {
     catch (e) { res.status(400).json({ erro: 'Placa já cadastrada ou erro nos dados.' }); }
 });
 
-// 🔍 ESSA É A ROTA QUE ESTAVA FALTANDO (Erro 404)!
 app.get('/veiculos/placa/:placa', async (req, res) => {
     try {
         const v = await Veiculo.findOne({ where: { placa: req.params.placa } });
@@ -161,7 +187,7 @@ app.get('/veiculos/placa/:placa', async (req, res) => {
     } catch (e) { res.status(500).json({ erro: 'Erro no servidor.' }); }
 });
 
-// --- ROTAS DE ORDEM DE SERVIÇO (Com Fotos) ---
+// --- ROTAS DE ORDEM DE SERVIÇO ---
 app.post('/ordens-servico', upload.array('fotos', 8), async (req, res) => {
     try {
         const { VeiculoId, descricao, valor, mecanico, km_entrada, km_saida } = req.body;

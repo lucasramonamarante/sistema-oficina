@@ -72,6 +72,7 @@
             margin-top: 10px;
         }
         .btn-entrar:hover { background-color: #0056b3; transform: scale(1.02); }
+        .btn-entrar:disabled { background-color: #555; cursor: not-allowed; }
         
         .erro-msg { color: #ff4d4d; margin-top: 15px; display: none; font-weight: bold; }
     </style>
@@ -82,43 +83,73 @@
         <h2>🛠️ Garagem 184</h2>
         <p style="color: #aaa; margin-bottom: 25px;">Acesso restrito ao sistema</p>
 
-        <div class="input-group">
-            <label for="email">E-mail</label>
-            <input type="email" id="email" placeholder="Digite seu e-mail" required>
-        </div>
+        <form id="form-login">
+            <div class="input-group">
+                <label for="email">E-mail</label>
+                <input type="email" id="email" placeholder="Digite seu e-mail" required>
+            </div>
 
-        <div class="input-group">
-            <label for="senha">Senha</label>
-            <input type="password" id="senha" placeholder="Digite sua senha" required>
-        </div>
+            <div class="input-group">
+                <label for="senha">Senha</label>
+                <input type="password" id="senha" placeholder="Digite sua senha" required>
+            </div>
 
-        <button class="btn-entrar" onclick="fazerLogin()">Entrar no Sistema</button>
+            <button type="submit" id="btn-entrar" class="btn-entrar">Entrar no Sistema</button>
+        </form>
+        
         <div id="mensagem-erro" class="erro-msg">E-mail ou senha incorretos!</div>
     </div>
 
     <script>
-        // 🚨 CONFIGURAÇÃO DA SENHA: Você pode alterar esses valores depois!
-        const EMAIL_CORRETO = "admin@garagem184.com";
-        const SENHA_CORRETA = "Garagem123";
+        // ⚠️ ATENÇÃO: Coloque aqui o link correto do seu servidor Koyeb!
+        // Exemplo: 'https://seu-projeto-oficina.koyeb.app'
+        const URL_SERVIDOR = 'https://shiny-ranna-33techsentrycomunicacao-3810abc5.koyeb.app';
 
-        function fazerLogin() {
+        document.getElementById('form-login').addEventListener('submit', async function(event) {
+            event.preventDefault(); // Impede a página de recarregar
+
             const emailDigitado = document.getElementById('email').value;
             const senhaDigitada = document.getElementById('senha').value;
             const msgErro = document.getElementById('mensagem-erro');
+            const btn = document.getElementById('btn-entrar');
 
-            if (emailDigitado === EMAIL_CORRETO && senhaDigitada === SENHA_CORRETA) {
-                // Se acertar, cria um "crachá virtual" no navegador e manda pro painel
-                localStorage.setItem('autenticado_garagem184', 'sim');
-                window.location.href = 'index.html';
-            } else {
-                // Se errar, mostra mensagem de erro
+            // Feedback visual enquanto carrega
+            btn.innerText = "Verificando...";
+            btn.disabled = true;
+            msgErro.style.display = 'none';
+
+            try {
+                // 🔒 Envia os dados para o servidor verificar de forma segura
+                const resposta = await fetch(`${URL_SERVIDOR}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: emailDigitado, senha: senhaDigitada })
+                });
+
+                const dados = await resposta.json();
+
+                if (resposta.ok) {
+                    // Se acertar, cria um "crachá virtual" no navegador e manda pro painel
+                    localStorage.setItem('autenticado_garagem184', dados.token);
+                    window.location.href = 'index.html';
+                } else {
+                    // Se errar (ex: senha incorreta), mostra a mensagem de erro que veio do backend
+                    msgErro.innerText = "❌ " + dados.erro;
+                    msgErro.style.display = 'block';
+                }
+            } catch (erro) {
+                msgErro.innerText = "❌ Erro ao conectar com o servidor.";
                 msgErro.style.display = 'block';
+            } finally {
+                // Volta o botão ao normal
+                btn.innerText = "Entrar no Sistema";
+                btn.disabled = false;
             }
-        }
+        });
 
         // Se o cara já estiver logado e tentar abrir o login, manda ele direto pro painel
         window.onload = function() {
-            if (localStorage.getItem('autenticado_garagem184') === 'sim') {
+            if (localStorage.getItem('autenticado_garagem184')) {
                 window.location.href = 'index.html';
             }
         }
