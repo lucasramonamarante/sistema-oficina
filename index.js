@@ -4,6 +4,7 @@ const { Sequelize, DataTypes } = require('sequelize');
 const multer = require('multer');
 const axios = require('axios');
 const FormData = require('form-data');
+const bcrypt = require('bcryptjs'); // 🔒 Adicionado para criptografar a senha do admin
 
 const app = express();
 app.use(cors());
@@ -21,9 +22,16 @@ const sequelize = new Sequelize(process.env.DATABASE_URL, {
 // ==========================================
 // 🏗️ Modelos do Banco de Dados
 // ==========================================
+
+// 🔒 Tabela do Administrador (Para o Login do Dono)
+const Admin = sequelize.define('Admin', {
+    email: { type: DataTypes.STRING, allowNull: false, unique: true },
+    senha: { type: DataTypes.STRING, allowNull: false }
+});
+
 const Cliente = sequelize.define('Cliente', {
     nome: { type: DataTypes.STRING, allowNull: false },
-    telefone: { type: DataTypes.STRING, allowNull: false, unique: true }, // 🔒 AGORA A TRAVA É NO TELEFONE!
+    telefone: { type: DataTypes.STRING, allowNull: false, unique: true }, // 🔒 TRAVA NO TELEFONE
     email: { type: DataTypes.STRING }
 });
 
@@ -65,6 +73,54 @@ sequelize.sync({ alter: true })
 
 app.get('/', (req, res) => {
     res.send('🚀 API Garagem 184 PRO - Online e Completa!');
+});
+
+// --- ROTAS DE AUTENTICAÇÃO (LOGIN) ---
+
+// 1. Rota para CRIAR o administrador (O cliente vai usar isso só 1 vez)
+app.post('/setup-admin', async (req, res) => {
+    try {
+        const { email, senha } = req.body;
+        
+        // Verifica se já existe um admin (para não deixar criarem mais de um)
+        const adminExistente = await Admin.findOne();
+        if (adminExistente) {
+            return res.status(400).json({ erro: 'O administrador já foi criado!' });
+        }
+
+        // Embaralha a senha antes de salvar
+        const salt = await bcrypt.genSalt(10);
+        const senhaCriptografada = await bcrypt.hash(senha, salt);
+
+        await Admin.create({ email, senha: senhaCriptografada });
+        res.status(201).json({ mensagem: '✅ Conta de administrador criada com sucesso!' });
+    } catch (erro) {
+        res.status(500).json({ erro: 'Erro ao criar administrador.' });
+    }
+});
+
+// 2. Rota de LOGIN (Vai conferir se a senha bate com a do banco)
+app.post('/login', async (req, res) => {
+    try {
+        const { email, senha } = req.body;
+        
+        // Procura o email no banco
+        const admin = await Admin.findOne({ where: { email } });
+        if (!admin) {
+            return res.status(404).json({ erro: 'E-mail não encontrado.' });
+        }
+
+        // Compara a senha digitada com a senha embaralhada do banco
+        const senhaCorreta = await bcrypt.compare(senha, admin.senha);
+        if (!senhaCorreta) {
+            return res.status(401).json({ erro: 'Senha incorreta!' });
+        }
+
+        // Se deu tudo certo, libera o acesso
+        res.status(200).json({ mensagem: 'Login aprovado!', token: 'acesso-liberado-garagem184' });
+    } catch (erro) {
+        res.status(500).json({ erro: 'Erro no servidor.' });
+    }
 });
 
 // --- ROTAS DE CLIENTES ---
