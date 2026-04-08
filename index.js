@@ -22,7 +22,7 @@ const sequelize = new Sequelize(process.env.DATABASE_URL, {
     dialectOptions: {
         ssl: {
             require: true,
-            rejectUnauthorized: true // Exigência de segurança do TiDB
+            rejectUnauthorized: false // Exigência de segurança do TiDB
         }
     }
 });
@@ -238,3 +238,34 @@ app.put('/ordens-servico/:id', async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Servidor rodando na porta ${PORT}`));
+// ==========================================
+// 🔄 ROTA DE ALTERAR SENHA
+// ==========================================
+app.post('/alterar-senha', async (req, res) => {
+    const { email, senhaAtual, novaSenha } = req.body;
+
+    try {
+        // 1. Procura o administrador pelo e-mail
+        const admin = await Admin.findOne({ where: { email } });
+        if (!admin) {
+            return res.status(404).json({ erro: 'Usuário não encontrado.' });
+        }
+
+        // 2. Verifica se a senha ATUAL que ele digitou está correta (Segurança)
+        const senhaValida = await bcrypt.compare(senhaAtual, admin.senha);
+        if (!senhaValida) {
+            return res.status(401).json({ erro: 'A senha atual está incorreta!' });
+        }
+
+        // 3. Se tudo estiver certo, criptografa a NOVA senha e salva
+        const novaSenhaCriptografada = await bcrypt.hash(novaSenha, 10);
+        admin.senha = novaSenhaCriptografada;
+        await admin.save();
+
+        res.json({ mensagem: 'Senha alterada com sucesso! Entre novamente.' });
+
+    } catch (erro) {
+        console.error('Erro ao alterar senha:', erro);
+        res.status(500).json({ erro: 'Erro interno ao tentar alterar a senha.' });
+    }
+});
