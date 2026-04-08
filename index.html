@@ -9,8 +9,8 @@
     <meta name="theme-color" content="#17a2b8">
 
     <script>
-        // Bloqueio de segurança
-        if (localStorage.getItem('autenticado_garagem184') !== 'sim') {
+        // 🔒 Bloqueio de segurança (Atualizado para ler o Token real do banco)
+        if (!localStorage.getItem('autenticado_garagem184')) {
             window.location.href = 'login.html';
         }
         
@@ -60,8 +60,15 @@
         .btn-veiculo { background-color: #fd7e14; }
         .btn-ordem { background-color: #28a745; }
         .btn-historico { background-color: #007bff; }
-        .btn-sair { background-color: #dc3545; margin-top: 30px; }
+        .btn-senha { background-color: #6c757d; margin-top: 10px; }
+        .btn-sair { background-color: #dc3545; margin-top: 10px; }
         .menu-btn:hover { opacity: 0.8; }
+        
+        /* Estilos do Modal de Senha */
+        .modal-input {
+            width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 5px; 
+            border: 1px solid #ccc; font-size: 16px; box-sizing: border-box;
+        }
     </style>
 </head>
 <body>
@@ -74,7 +81,82 @@
         <a href="ordem-servico.html" class="menu-btn btn-ordem">📋 Nova Ordem de Serviço</a>
         <a href="historico.html" class="menu-btn btn-historico">📜 Consultar Histórico</a>
         
+        <button onclick="abrirModalSenha()" class="menu-btn btn-senha">🔑 Trocar Senha</button>
+        
         <button onclick="fazerLogout()" class="menu-btn btn-sair">🚪 Sair do Sistema</button>
     </div>
+
+    <div id="modalSenha" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; justify-content: center; align-items: center;">
+        <div style="background: white; color: black; padding: 30px; border-radius: 8px; width: 320px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+            <h3 style="margin-top: 0; color: #333;">Alterar Senha</h3>
+            <p style="color: #666; font-size: 14px; margin-bottom: 20px;">Digite seus dados para atualizar o acesso.</p>
+            
+            <input type="email" id="emailTroca" class="modal-input" placeholder="Seu E-mail de Login">
+            <input type="password" id="senhaAtualTroca" class="modal-input" placeholder="Senha Atual">
+            <input type="password" id="novaSenhaTroca" class="modal-input" placeholder="Nova Senha">
+            
+            <button onclick="salvarNovaSenha()" class="menu-btn btn-ordem" style="margin-bottom: 10px;" id="btn-salvar-senha">
+                Salvar Nova Senha
+            </button>
+            <button onclick="fecharModalSenha()" class="menu-btn btn-sair" style="margin-top: 0;">
+                Cancelar
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const URL_SERVIDOR = 'https://shiny-ranna-33techsentrycomunicacao-3810abc5.koyeb.app';
+
+        function abrirModalSenha() {
+            document.getElementById('modalSenha').style.display = 'flex';
+        }
+
+        function fecharModalSenha() {
+            document.getElementById('modalSenha').style.display = 'none';
+            document.getElementById('emailTroca').value = '';
+            document.getElementById('senhaAtualTroca').value = '';
+            document.getElementById('novaSenhaTroca').value = '';
+        }
+
+        async function salvarNovaSenha() {
+            const email = document.getElementById('emailTroca').value;
+            const senhaAtual = document.getElementById('senhaAtualTroca').value;
+            const novaSenha = document.getElementById('novaSenhaTroca').value;
+            const btnSalvar = document.getElementById('btn-salvar-senha');
+
+            if (!email || !senhaAtual || !novaSenha) {
+                alert('⚠️ Por favor, preencha todos os campos!');
+                return;
+            }
+
+            btnSalvar.innerText = "Salvando...";
+            btnSalvar.disabled = true;
+
+            try {
+                const resposta = await fetch(`${URL_SERVIDOR}/alterar-senha`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, senhaAtual, novaSenha })
+                });
+
+                const dados = await resposta.json();
+
+                if (resposta.ok) {
+                    alert('✅ ' + dados.mensagem);
+                    fecharModalSenha();
+                    // Opcional: Forçar logout após trocar a senha para ele entrar com a nova
+                    fazerLogout(); 
+                } else {
+                    alert('❌ Erro: ' + dados.erro);
+                }
+            } catch (erro) {
+                console.error(erro);
+                alert('❌ Erro ao conectar com o servidor.');
+            } finally {
+                btnSalvar.innerText = "Salvar Nova Senha";
+                btnSalvar.disabled = false;
+            }
+        }
+    </script>
 </body>
 </html>
