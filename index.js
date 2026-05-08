@@ -9,6 +9,7 @@ const bcrypt = require('bcryptjs'); // 🔒 Adicionado para criptografar a senha
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(express.static(__dirname));
 
 const upload = multer({ storage: multer.memoryStorage() });
 const IMGBB_API_KEY = '75f4d0f49c995f73237ab9a2f6e4a177';
