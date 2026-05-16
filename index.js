@@ -4,7 +4,7 @@ const { Sequelize, DataTypes } = require('sequelize');
 const multer = require('multer');
 const axios = require('axios');
 const FormData = require('form-data');
-const bcrypt = require('bcryptjs'); // 🔒 Adicionado para criptografar a senha do admin
+const bcrypt = require('bcryptjs'); 
 
 const app = express();
 app.use(cors());
@@ -15,7 +15,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 const IMGBB_API_KEY = '75f4d0f49c995f73237ab9a2f6e4a177';
 
 // ==========================================
-// 🔌 Conexão Segura com o Banco (Agora no TiDB Cloud)
+// 🔌 Conexão Segura com o Banco (TiDB Cloud)
 // ==========================================
 const sequelize = new Sequelize(process.env.DATABASE_URL, { 
     dialect: 'mysql',
@@ -23,7 +23,7 @@ const sequelize = new Sequelize(process.env.DATABASE_URL, {
     dialectOptions: {
         ssl: {
             require: true,
-            rejectUnauthorized: false // Exigência de segurança do TiDB
+            rejectUnauthorized: false 
         }
     }
 });
@@ -32,7 +32,6 @@ const sequelize = new Sequelize(process.env.DATABASE_URL, {
 // 🏗️ Modelos do Banco de Dados
 // ==========================================
 
-// 🔒 Tabela do Administrador (Para o Login do Dono)
 const Admin = sequelize.define('Admin', {
     email: { type: DataTypes.STRING, allowNull: false, unique: true },
     senha: { type: DataTypes.STRING, allowNull: false }
@@ -40,7 +39,7 @@ const Admin = sequelize.define('Admin', {
 
 const Cliente = sequelize.define('Cliente', {
     nome: { type: DataTypes.STRING, allowNull: false },
-    telefone: { type: DataTypes.STRING, allowNull: false, unique: true }, // 🔒 TRAVA NO TELEFONE
+    telefone: { type: DataTypes.STRING, allowNull: false, unique: true }, 
     email: { type: DataTypes.STRING }
 });
 
@@ -77,14 +76,12 @@ sequelize.sync({ alter: true })
     .catch(err => console.error('❌ Erro ao sincronizar banco:', err));
 
 // ==========================================
-// 🚀 ROTAS (Caminhos do Servidor)
+// 🚀 ROTAS
 // ==========================================
 
 app.get('/', (req, res) => {
-    res.send('🚀 API Garagem 184 PRO - Online, Segura e Conectada ao TiDB!');
+    res.send('🚀 API Garagem 184 PRO - Online e Conectada ao TiDB!');
 });
-
-// --- ROTAS DE AUTENTICAÇÃO E SENHA ---
 
 // 1. Rota para CRIAR o administrador (Setup Inicial)
 app.post('/setup-admin', async (req, res) => {
@@ -102,7 +99,9 @@ app.post('/setup-admin', async (req, res) => {
         await Admin.create({ email, senha: senhaCriptografada });
         res.status(201).json({ mensagem: '✅ Conta de administrador criada com sucesso!' });
     } catch (erro) {
-        res.status(500).json({ erro: 'Erro ao criar administrador.' });
+        // 🚨 AQUI ESTÁ A "CAIXA PRETA" QUE VAMOS ABRIR:
+        console.error("🚨 ERRO DETALHADO NO SETUP-ADMIN:", erro); 
+        res.status(500).json({ erro: 'Erro ao criar administrador. Verifique os logs do servidor.' });
     }
 });
 
@@ -127,7 +126,7 @@ app.post('/login', async (req, res) => {
     }
 });
 
-// 3. 🆕 Rota para ALTERAR A SENHA (Autonomia para o cliente)
+// 3. Rota para ALTERAR A SENHA
 app.post('/alterar-senha', async (req, res) => {
     try {
         const { email, senhaAtual, novaSenha } = req.body;
@@ -239,34 +238,3 @@ app.put('/ordens-servico/:id', async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Servidor rodando na porta ${PORT}`));
-// ==========================================
-// 🔄 ROTA DE ALTERAR SENHA
-// ==========================================
-app.post('/alterar-senha', async (req, res) => {
-    const { email, senhaAtual, novaSenha } = req.body;
-
-    try {
-        // 1. Procura o administrador pelo e-mail
-        const admin = await Admin.findOne({ where: { email } });
-        if (!admin) {
-            return res.status(404).json({ erro: 'Usuário não encontrado.' });
-        }
-
-        // 2. Verifica se a senha ATUAL que ele digitou está correta (Segurança)
-        const senhaValida = await bcrypt.compare(senhaAtual, admin.senha);
-        if (!senhaValida) {
-            return res.status(401).json({ erro: 'A senha atual está incorreta!' });
-        }
-
-        // 3. Se tudo estiver certo, criptografa a NOVA senha e salva
-        const novaSenhaCriptografada = await bcrypt.hash(novaSenha, 10);
-        admin.senha = novaSenhaCriptografada;
-        await admin.save();
-
-        res.json({ mensagem: 'Senha alterada com sucesso! Entre novamente.' });
-
-    } catch (erro) {
-        console.error('Erro ao alterar senha:', erro);
-        res.status(500).json({ erro: 'Erro interno ao tentar alterar a senha.' });
-    }
-});
