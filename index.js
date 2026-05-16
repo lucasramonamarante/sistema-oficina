@@ -88,11 +88,11 @@ app.post('/setup-admin', async (req, res) => {
     try {
         const { email, senha } = req.body;
         
-        // 🔓 TRAVA DESATIVADA TEMPORARIAMENTE PARA CRIAR O CLIENTE
-        // const adminExistente = await Admin.findOne();
-        // if (adminExistente) {
-        //     return res.status(400).json({ erro: 'O administrador já foi criado!' });
-        // }
+        // 🔒 TRAVA REATIVADA: Bloqueia a criação de novos usuários
+        const adminExistente = await Admin.findOne();
+        if (adminExistente) {
+            return res.status(400).json({ erro: 'O sistema já possui administradores cadastrados. Acesso negado!' });
+        }
 
         const salt = await bcrypt.genSalt(10);
         const senhaCriptografada = await bcrypt.hash(senha, salt);
