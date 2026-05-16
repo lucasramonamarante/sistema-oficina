@@ -88,10 +88,11 @@ app.post('/setup-admin', async (req, res) => {
     try {
         const { email, senha } = req.body;
         
-        const adminExistente = await Admin.findOne();
-        if (adminExistente) {
-            return res.status(400).json({ erro: 'O administrador já foi criado!' });
-        }
+        // 🔓 TRAVA DESATIVADA TEMPORARIAMENTE PARA CRIAR O CLIENTE
+        // const adminExistente = await Admin.findOne();
+        // if (adminExistente) {
+        //     return res.status(400).json({ erro: 'O administrador já foi criado!' });
+        // }
 
         const salt = await bcrypt.genSalt(10);
         const senhaCriptografada = await bcrypt.hash(senha, salt);
@@ -99,7 +100,6 @@ app.post('/setup-admin', async (req, res) => {
         await Admin.create({ email, senha: senhaCriptografada });
         res.status(201).json({ mensagem: '✅ Conta de administrador criada com sucesso!' });
     } catch (erro) {
-        // 🚨 AQUI ESTÁ A "CAIXA PRETA" QUE VAMOS ABRIR:
         console.error("🚨 ERRO DETALHADO NO SETUP-ADMIN:", erro); 
         res.status(500).json({ erro: 'Erro ao criar administrador. Verifique os logs do servidor.' });
     }
