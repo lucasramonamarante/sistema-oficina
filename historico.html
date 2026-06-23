@@ -179,7 +179,9 @@
             });
         }
 
-        // 📄 Gerador de PDF Inteligente (AGORA COM KM E TÉCNICO)
+        // ==============================================================
+        // 📄 GERADOR DE PDF EXECUTIVO (LAYOUT GARAGEM 184 PRO)
+        // ==============================================================
         function gerarPDF(id) {
             const os = listaOS.find(item => item.id === id);
             if (!os) return alert("OS não encontrada!");
@@ -188,72 +190,174 @@
 
             const dataFormatada = os.data ? os.data.split('-').reverse().join('/') : '-';
             const clienteNome = (os.Veiculo && os.Veiculo.Cliente) ? os.Veiculo.Cliente.nome : 'Não informado';
-            const veiculoInfo = os.Veiculo ? `${os.Veiculo.marca} ${os.Veiculo.modelo} - Placa: ${os.Veiculo.placa}` : 'Não informado';
-            const valorFormatado = os.valor ? parseFloat(os.valor).toFixed(2) : '0.00';
+            const placa = os.Veiculo ? os.Veiculo.placa : '---';
+            const modelo = os.Veiculo ? os.Veiculo.modelo : '---';
+            const ano = os.Veiculo ? os.Veiculo.ano : '---';
             
-            // 👇 AQUI ESTÃO AS INFORMAÇÕES NOVAS 👇
             const tecnico = os.mecanico ? os.mecanico : 'Não informado';
             const kmEntrada = os.km_entrada ? os.km_entrada : '---';
             const kmSaida = os.km_saida ? os.km_saida : '---';
 
+            const valorMaoObra = os.valor_mao_de_obra ? parseFloat(os.valor_mao_de_obra).toFixed(2) : '0.00';
+            const valorPecas = os.valor_pecas ? parseFloat(os.valor_pecas).toFixed(2) : '0.00';
+            const valorTotal = os.valor ? parseFloat(os.valor).toFixed(2) : '0.00';
+
+            // Montagem da Tabela de Peças
+            let linhasPecasHTML = '';
+            if (os.itens && os.itens.length > 0) {
+                os.itens.forEach(peca => {
+                    linhasPecasHTML += `
+                        <tr style="border-bottom: 1px solid #444; background-color: #2a2a2a;">
+                            <td style="padding: 6px 8px;">${peca.nome_peca}</td>
+                            <td style="padding: 6px 8px; text-align: center;">${peca.quantidade}</td>
+                            <td style="padding: 6px 8px; text-align: right;">${parseFloat(peca.valor_unitario).toFixed(2)}</td>
+                            <td style="padding: 6px 8px; text-align: right;">${parseFloat(peca.valor_total).toFixed(2)}</td>
+                        </tr>`;
+                });
+            } else {
+                linhasPecasHTML = `<tr><td colspan="4" style="padding: 10px; text-align: center; color: #888;">Nenhuma peça registrada</td></tr>`;
+            }
+
+            // Montagem das Fotos (Se solicitado)
             let secaoFotosHTML = '';
             if (incluirFotos) {
                 const fotos = [os.foto_1, os.foto_2, os.foto_3, os.foto_4, os.foto_5, os.foto_6, os.foto_7, os.foto_8].filter(url => url != null);
-                
                 if (fotos.length > 0) {
-                    secaoFotosHTML += `<div style="page-break-before: always; margin-top: 30px;">
-                                        <h3 style="color: #333; text-align: center; border-bottom: 2px solid #ccc; padding-bottom: 10px;">📸 Registros Fotográficos do Veículo</h3>
-                                        <div style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; margin-top: 20px;">`;
-                    
+                    secaoFotosHTML += `
+                        <div style="page-break-before: always; margin-top: 20px;">
+                            <h3 style="color: #ffc107; text-align: center; border-bottom: 1px solid #555; padding-bottom: 10px; text-transform: uppercase;">📸 Registros do Veículo</h3>
+                            <div style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 15px;">`;
                     fotos.forEach(fotoUrl => {
-                        secaoFotosHTML += `<img src="${fotoUrl}" style="width: 300px; height: 200px; object-fit: cover; border-radius: 8px; border: 1px solid #555;">`;
+                        secaoFotosHTML += `<img src="${fotoUrl}" style="width: 380px; height: 250px; object-fit: cover; border-radius: 5px; border: 2px solid #555;">`;
                     });
-                    
                     secaoFotosHTML += `</div></div>`;
                 }
             }
 
-            const elementoRecibo = document.createElement('div');
-            
-            elementoRecibo.innerHTML = `
-                <div style="padding: 40px; font-family: Arial, sans-serif; color: black; background: white;">
-                    <div style="text-align: center;">
-                        <h1 style="color: #333; margin-top: 0;">🛠️ Garagem 184</h1>
-                    </div>
-                    <h3 style="text-align: center; color: #555; margin-top: -10px;">Ordem de Serviço Nº ${os.numero_os}</h3>
-                    <hr style="border: 1px solid #ccc; margin: 20px 0;">
+            // CRIAÇÃO DO CHASSI DO PDF (HTML INVISÍVEL)
+            const elementoPDF = document.createElement('div');
+            elementoPDF.innerHTML = `
+                <div style="width: 850px; padding: 25px; background-color: #1a1a1a; color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; box-sizing: border-box;">
                     
-                    <p><strong>Data:</strong> ${dataFormatada}</p>
-                    <p><strong>Cliente:</strong> ${clienteNome}</p>
-                    <p><strong>Veículo:</strong> ${veiculoInfo}</p>
-                    <p><strong>Técnico Responsável:</strong> ${tecnico}</p>
-                    <p><strong>KM de Entrada:</strong> ${kmEntrada} &nbsp;&nbsp;|&nbsp;&nbsp; <strong>KM de Saída:</strong> ${kmSaida}</p>
-                    
-                    <hr style="border: 1px solid #ccc; margin: 20px 0;">
-                    
-                    <h3>Descrição do Serviço:</h3>
-                    <p style="background: #f9f9f9; padding: 15px; border-radius: 5px; border: 1px solid #eee; white-space: pre-wrap;">${os.descricao}</p>
-                    
-                    <h2 style="text-align: right; color: #28a745; margin-top: 30px;">Valor Total: R$ ${valorFormatado}</h2>
-                    
-                    <div style="margin-top: 60px; text-align: center;">
-                        <p>____________________________________________________</p>
-                        <p>Assinatura do Cliente</p>
-                    </div>
+                    <div style="border: 2px solid #ffc107; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(255,193,7,0.2);">
+                        
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #444; padding-bottom: 15px; margin-bottom: 15px; background: linear-gradient(90deg, #1a1a1a 0%, #3a1c00 50%, #1a1a1a 100%); padding: 15px; border-radius: 5px;">
+                            <div style="flex: 1;">
+                                <h1 style="color: #ffc107; margin: 0; font-size: 28px; text-transform: uppercase; text-shadow: 1px 1px 2px black;">⚙️ Garagem 184</h1>
+                                <p style="margin: 2px 0 0 0; color: #ccc; font-size: 14px; letter-spacing: 1px;">Auto Mecânica Especializada</p>
+                            </div>
+                            <div style="flex: 1; text-align: center;">
+                                <h2 style="margin: 0; font-size: 24px; color: #fff;">ORDEM DE SERVIÇO</h2>
+                                <h4 style="color: #ffc107; margin: 5px 0 0 0; font-weight: normal;">Orçamento Detalhado</h4>
+                            </div>
+                            <div style="flex: 1; text-align: right;">
+                                <div style="display: inline-block; border: 1px solid #ffc107; padding: 10px 15px; border-radius: 5px; background-color: #000;">
+                                    <span style="font-size: 12px; color: #aaa;">Nº OS:</span><br>
+                                    <b style="font-size: 20px; color: #fff;">${os.numero_os}</b>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; border: 1px solid #444; margin-bottom: 15px; background-color: #222;">
+                            <div style="flex: 1; border-right: 1px solid #444; padding: 8px 12px;">
+                                <span style="font-size: 11px; color: #888;">DATA:</span> <b style="font-size: 14px;">${dataFormatada}</b>
+                            </div>
+                            <div style="flex: 2; padding: 8px 12px;">
+                                <span style="font-size: 11px; color: #888;">CLIENTE:</span> <b style="font-size: 14px;">${clienteNome}</b>
+                            </div>
+                        </div>
 
+                        <div style="background-color: #333; color: #ffc107; text-align: center; padding: 5px; font-weight: bold; font-size: 12px; border: 1px solid #444; border-bottom: none;">DADOS DO VEÍCULO</div>
+                        <div style="display: flex; border: 1px solid #444; margin-bottom: 15px; background-color: #222;">
+                            <div style="flex: 1; border-right: 1px solid #444; padding: 8px 12px;">
+                                <span style="font-size: 11px; color: #888;">PLACA:</span> <b style="font-size: 14px; text-transform: uppercase;">${placa}</b>
+                            </div>
+                            <div style="flex: 2; border-right: 1px solid #444; padding: 8px 12px;">
+                                <span style="font-size: 11px; color: #888;">MODELO:</span> <b style="font-size: 14px;">${modelo}</b>
+                            </div>
+                            <div style="flex: 1; padding: 8px 12px;">
+                                <span style="font-size: 11px; color: #888;">ANO:</span> <b style="font-size: 14px;">${ano}</b>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; border: 1px solid #444; margin-bottom: 15px; background-color: #222;">
+                            <div style="flex: 1; border-right: 1px solid #444; padding: 8px 12px; text-align: center;">
+                                <span style="font-size: 11px; color: #888;">KM ENTRADA:</span> <b style="font-size: 14px;">${kmEntrada}</b>
+                            </div>
+                            <div style="flex: 1; padding: 8px 12px; text-align: center;">
+                                <span style="font-size: 11px; color: #888;">KM SAÍDA:</span> <b style="font-size: 14px;">${kmSaida}</b>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; gap: 15px; margin-bottom: 15px; align-items: stretch;">
+                            
+                            <div style="flex: 1.2; display: flex; flex-direction: column; border: 1px solid #444; background-color: #222;">
+                                <div style="background-color: #333; color: #ffc107; text-align: center; padding: 5px; font-weight: bold; font-size: 12px; border-bottom: 1px solid #444;">DESCRIÇÃO DOS SERVIÇOS</div>
+                                <div style="padding: 12px; white-space: pre-wrap; font-size: 13px; line-height: 1.5; color: #ddd; flex-grow: 1;">${os.descricao}</div>
+                            </div>
+
+                            <div style="flex: 1; display: flex; flex-direction: column; border: 1px solid #444; background-color: #222;">
+                                <div style="background-color: #333; color: #ffc107; text-align: center; padding: 5px; font-weight: bold; font-size: 12px; border-bottom: 1px solid #444;">PEÇAS UTILIZADAS</div>
+                                <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                                    <thead>
+                                        <tr style="border-bottom: 1px solid #555; background-color: #111;">
+                                            <th style="padding: 6px 8px; text-align: left;">Peça</th>
+                                            <th style="padding: 6px 8px; text-align: center;">Qtd</th>
+                                            <th style="padding: 6px 8px; text-align: right;">R$ Un.</th>
+                                            <th style="padding: 6px 8px; text-align: right;">R$ Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${linhasPecasHTML}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                            <div style="flex: 1; font-size: 12px; color: #888;">
+                                <p><strong>Técnico Responsável:</strong> ${tecnico}</p>
+                                <p style="margin-top: 20px;">_________________________________________<br>Assinatura do Cliente</p>
+                            </div>
+                            
+                            <div style="width: 320px; border: 1px solid #444; background-color: #222;">
+                                <div style="background-color: #333; color: #ffc107; text-align: center; padding: 5px; font-weight: bold; font-size: 12px; border-bottom: 1px solid #444;">RESUMO DE VALORES</div>
+                                <div style="display: flex; justify-content: space-between; padding: 8px 12px; border-bottom: 1px dotted #555;">
+                                    <span style="font-size: 13px; color: #ccc;">MÃO DE OBRA</span>
+                                    <b style="font-size: 14px;">R$ ${valorMaoObra}</b>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid #555;">
+                                    <span style="font-size: 13px; color: #ccc;">TOTAL PEÇAS</span>
+                                    <b style="font-size: 14px;">R$ ${valorPecas}</b>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; padding: 12px; background-color: #111;">
+                                    <span style="font-size: 16px; font-weight: bold; color: #fff;">TOTAL GERAL</span>
+                                    <b style="font-size: 18px; color: #28a745;">R$ ${valorTotal}</b>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 20px; text-align: center; font-size: 11px; color: #666; border-top: 1px solid #444; padding-top: 10px;">
+                            <span style="color: #ffc107;">★</span> Obrigado pela preferência! Volte sempre. <span style="color: #ffc107;">★</span><br>
+                            Gerado pelo Sistema Garagem 184 PRO
+                        </div>
+
+                    </div>
+                    
                     ${secaoFotosHTML}
                 </div>
             `;
 
             const opcoesPDF = {
-                margin:       10,
+                margin:       0,
                 filename:     `OS_${os.numero_os}_Garagem184.pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true },
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                html2canvas:  { scale: 2, useCORS: true, backgroundColor: '#1a1a1a' },
+                jsPDF:        { unit: 'px', format: [850, 1100], orientation: 'portrait' }
             };
 
-            html2pdf().set(opcoesPDF).from(elementoRecibo).save();
+            // Dispara o download
+            html2pdf().set(opcoesPDF).from(elementoPDF).save();
         }
 
         async function apagarOS(id) {
@@ -268,7 +372,7 @@
             if (!os) return alert("OS não encontrada!");
 
             const nDesc = prompt("Nova descrição:", os.descricao);
-            const nVal = prompt("Novo valor:", os.valor);
+            const nVal = prompt("Novo valor TOTAL:", os.valor);
             
             if (nDesc !== null && nVal !== null) {
                 await fetch(`${URL_SERVIDOR}/ordens-servico/${id}`, {
