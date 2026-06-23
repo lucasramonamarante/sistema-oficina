@@ -53,7 +53,9 @@ const Veiculo = sequelize.define('Veiculo', {
 const OrdemServico = sequelize.define('OrdemServico', {
     numero_os: { type: DataTypes.STRING, allowNull: false, unique: true },
     descricao: { type: DataTypes.TEXT, allowNull: false },
-    valor: { type: DataTypes.DECIMAL(10, 2) },
+    valor_mao_de_obra: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 }, // Novo
+    valor_pecas: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },       // Novo
+    valor: { type: DataTypes.DECIMAL(10, 2) }, // Total Geral
     data: { type: DataTypes.DATEONLY, defaultValue: Sequelize.NOW },
     mecanico: { type: DataTypes.STRING },
     km_entrada: { type: DataTypes.STRING },
@@ -65,11 +67,25 @@ const OrdemServico = sequelize.define('OrdemServico', {
     foto_7: { type: DataTypes.STRING }, foto_8: { type: DataTypes.STRING }
 });
 
-// Associações
+// NOVO: Modelo para guardar as peças individuais da OS
+const ItemOS = sequelize.define('ItemOS', {
+    nome_peca: { type: DataTypes.STRING, allowNull: false },
+    quantidade: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 1 },
+    valor_unitario: { type: DataTypes.DECIMAL(10, 2), allowNull: false },
+    valor_total: { type: DataTypes.DECIMAL(10, 2), allowNull: false }
+});
+
+// ==========================================
+// 🔗 Associações
+// ==========================================
 Cliente.hasMany(Veiculo);
 Veiculo.belongsTo(Cliente);
 Veiculo.hasMany(OrdemServico);
 OrdemServico.belongsTo(Veiculo);
+
+// Uma OS tem Vários Itens. O CASCADE apaga as peças se a OS for apagada.
+OrdemServico.hasMany(ItemOS, { as: 'itens', onDelete: 'CASCADE' });
+ItemOS.belongsTo(OrdemServico);
 
 sequelize.sync({ alter: true })
     .then(() => console.log('✅ Banco de Dados TiDB Sincronizado e Pronto!'))
@@ -190,7 +206,7 @@ app.get('/veiculos/placa/:placa', async (req, res) => {
 // --- ROTAS DE ORDEM DE SERVIÇO ---
 app.post('/ordens-servico', upload.array('fotos', 8), async (req, res) => {
     try {
-        const { VeiculoId, descricao, valor, mecanico, km_entrada, km_saida } = req.body;
+        const { VeiculoId, descricao, valor_mao_de_obra, valor_pecas, valor, mecanico, km_entrada, km_saida, itensJSON } = req.body;
         const files = req.files || [];
         const linksFotos = [];
 
@@ -204,13 +220,29 @@ app.post('/ordens-servico', upload.array('fotos', 8), async (req, res) => {
         const totalOS = await OrdemServico.count();
         const numeroGerado = `${new Date().getFullYear()}${(totalOS + 1).toString().padStart(4, '0')}`;
 
+        // Cria a OS com os novos campos de valores
         const os = await OrdemServico.create({
-            numero_os: numeroGerado, VeiculoId, descricao, valor, mecanico, km_entrada, km_saida,
+            numero_os: numeroGerado, VeiculoId, descricao, 
+            valor_mao_de_obra: valor_mao_de_obra || 0,
+            valor_pecas: valor_pecas || 0,
+            valor: valor || 0,
+            mecanico, km_entrada, km_saida,
             foto_1: linksFotos[0] || null, foto_2: linksFotos[1] || null,
             foto_3: linksFotos[2] || null, foto_4: linksFotos[3] || null,
             foto_5: linksFotos[4] || null, foto_6: linksFotos[5] || null,
             foto_7: linksFotos[6] || null, foto_8: linksFotos[7] || null
         });
+
+        // Se houver peças, converte e salva no banco atreladas à OS
+        if (itensJSON) {
+            const itens = JSON.parse(itensJSON);
+            const itensParaSalvar = itens.map(item => ({
+                ...item,
+                OrdemServicoId: os.id
+            }));
+            await ItemOS.bulkCreate(itensParaSalvar);
+        }
+
         res.status(201).json(os);
     } catch (erro) {
         console.error(erro);
@@ -220,7 +252,10 @@ app.post('/ordens-servico', upload.array('fotos', 8), async (req, res) => {
 
 app.get('/ordens-servico', async (req, res) => {
     const ordens = await OrdemServico.findAll({ 
-        include: { model: Veiculo, include: [Cliente] }, 
+        include: [
+            { model: Veiculo, include: [Cliente] },
+            { model: ItemOS, as: 'itens' } // Inclui a lista de peças na busca
+        ], 
         order: [['createdAt', 'DESC']] 
     });
     res.json(ordens);
