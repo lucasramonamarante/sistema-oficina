@@ -14,6 +14,7 @@
         body { background-image: linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.8)), url('https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?q=80&w=1920&auto=format&fit=crop'); background-size: cover; background-position: center; font-family: Arial, sans-serif; color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px 0; }
         .container { background-color: rgba(30, 30, 30, 0.9); padding: 30px; border-radius: 10px; width: 450px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
         h2 { text-align: center; color: #ffc107; }
+        h4 { text-align: center; color: #ffc107; margin-bottom: 10px; }
         label { font-weight: bold; display: block; margin-top: 15px; }
         input, textarea, input[type="file"] { width: 100%; padding: 10px; margin-top: 5px; border-radius: 5px; border: none; background-color: #555; color: white; box-sizing: border-box; font-size: 16px;}
         textarea { resize: vertical; height: 80px; }
@@ -23,6 +24,12 @@
         .btn-voltar { background-color: #6c757d; display: block; text-align: center; text-decoration: none; padding: 12px; margin-top: 10px; border-radius: 5px; font-weight: bold; color: white; }
         #info-veiculo { margin-top: 10px; padding: 10px; background-color: #28a745; border-radius: 5px; display: none; text-align: center; font-weight: bold;}
         .foto-aviso { font-size: 12px; color: #ffc107; margin-top: 3px; display: block; }
+        
+        /* Estilos das peças */
+        .item-peca { display: flex; gap: 5px; margin-bottom: 10px; align-items: center; background-color: #444; padding: 10px; border-radius: 5px; }
+        .item-peca input { margin-top: 0; }
+        .btn-remover { background-color: #dc3545; color: white; padding: 10px; border-radius: 5px; cursor: pointer; width: auto; margin-top: 0; }
+        .btn-add-peca { background-color: #28a745; color: white; margin-top: 10px; margin-bottom: 15px; }
     </style>
 </head>
 <body>
@@ -60,9 +67,20 @@
             <label>Descrição do Serviço:</label>
             <textarea id="descricao" name="descricao" placeholder="Ex: Troca de óleo, filtro e pastilha de freio..." required></textarea>
             
-            <label>Valor Total (R$):</label>
-            <input type="number" id="valor" name="valor" step="0.01" placeholder="Ex: 150.00" required>
-            
+            <hr style="border-color: #555; margin: 20px 0;">
+            <h4>Valores e Peças Utilizadas</h4>
+
+            <label>Valor da Mão de Obra (R$):</label>
+            <input type="number" id="valor_mao_de_obra" step="0.01" value="0.00" oninput="calcularTotal()" required>
+
+            <div id="lista-pecas" style="margin-top: 15px;">
+                </div>
+
+            <button type="button" class="btn-add-peca" onclick="adicionarPeca()">➕ Adicionar Peça</button>
+
+            <label>Valor Total (Peças + Mão de Obra) (R$):</label>
+            <input type="number" id="valor_total" step="0.01" value="0.00" readonly style="background-color: #333; font-weight: bold; color: #00ff00; border: 1px solid #555;">
+            <hr style="border-color: #555; margin: 20px 0;">
             <button type="submit" id="btn-salvar">Gerar Ordem de Serviço</button>
         </form>
         <a href="index.html" class="btn-voltar">Voltar ao Painel</a>
@@ -96,6 +114,39 @@
             }
         }
 
+        // ==============================================
+        // FUNÇÕES DE PEÇAS E CÁLCULO DE VALORES
+        // ==============================================
+        function adicionarPeca() {
+            const container = document.getElementById('lista-pecas');
+            const div = document.createElement('div');
+            div.className = 'item-peca';
+            
+            div.innerHTML = `
+                <input type="text" placeholder="Peça" class="nome-peca" style="flex: 2;" required>
+                <input type="number" placeholder="Qtd" class="qtd-peca" value="1" min="1" oninput="calcularTotal()" style="flex: 0.8;" required>
+                <input type="number" placeholder="R$ Un." class="valor-unitario-peca" step="0.01" value="0.00" oninput="calcularTotal()" style="flex: 1;" required>
+                <button type="button" class="btn-remover" onclick="this.parentElement.remove(); calcularTotal()">X</button>
+            `;
+            container.appendChild(div);
+        }
+
+        function calcularTotal() {
+            let totalMaoObra = parseFloat(document.getElementById('valor_mao_de_obra').value) || 0;
+            let totalPecas = 0;
+            
+            const itens = document.querySelectorAll('.item-peca');
+            itens.forEach(item => {
+                const qtd = parseFloat(item.querySelector('.qtd-peca').value) || 0;
+                const valorUn = parseFloat(item.querySelector('.valor-unitario-peca').value) || 0;
+                totalPecas += (qtd * valorUn);
+            });
+
+            const totalGeral = totalMaoObra + totalPecas;
+            document.getElementById('valor_total').value = totalGeral.toFixed(2);
+        }
+        // ==============================================
+
         // 🚀 FUNÇÃO MÁGICA DE COMPRIMIR FOTOS 🚀
         function comprimirImagem(file, maxWidth = 1000, maxHeight = 1000, quality = 0.7) {
             return new Promise((resolve, reject) => {
@@ -108,7 +159,6 @@
                         let width = img.width;
                         let height = img.height;
 
-                        // Calcula o novo tamanho mantendo a proporção
                         if (width > height) {
                             if (width > maxWidth) {
                                 height = Math.round(height * (maxWidth / width));
@@ -127,7 +177,6 @@
                         const ctx = canvas.getContext('2d');
                         ctx.drawImage(img, 0, 0, width, height);
 
-                        // Converte o canvas de volta para um arquivo leve (JPEG)
                         canvas.toBlob((blob) => {
                             const arquivoComprimido = new File([blob], file.name, {
                                 type: 'image/jpeg',
@@ -153,7 +202,7 @@
 
             const btnSalvar = document.getElementById('btn-salvar');
             btnSalvar.disabled = true;
-            btnSalvar.innerText = "Preparando e Comprimindo Fotos... ⏳"; // Mudamos o texto para dar feedback!
+            btnSalvar.innerText = "Preparando e Comprimindo Fotos... ⏳"; 
 
             const formData = new FormData();
             formData.append('VeiculoId', veiculoIdEncontrado);
@@ -161,15 +210,37 @@
             formData.append('km_entrada', document.getElementById('km_entrada').value);
             formData.append('km_saida', document.getElementById('km_saida').value);
             formData.append('descricao', document.getElementById('descricao').value);
-            formData.append('valor', document.getElementById('valor').value.replace(',', '.'));
+            
+            // --- CAPTURA DE VALORES E PEÇAS ---
+            const valorMaoObra = document.getElementById('valor_mao_de_obra').value;
+            const valorTotal = document.getElementById('valor_total').value;
+            
+            const itensArray = [];
+            let valorPecasTotal = 0;
 
-            // 🚀 PROCESSANDO AS FOTOS ANTES DE ENVIAR 🚀
+            document.querySelectorAll('.item-peca').forEach(item => {
+                const nome_peca = item.querySelector('.nome-peca').value;
+                const quantidade = parseFloat(item.querySelector('.qtd-peca').value) || 1;
+                const valor_unitario = parseFloat(item.querySelector('.valor-unitario-peca').value) || 0;
+                const valor_total_item = quantidade * valor_unitario;
+                
+                valorPecasTotal += valor_total_item;
+                itensArray.push({ nome_peca, quantidade, valor_unitario, valor_total: valor_total_item });
+            });
+
+            formData.append('valor_mao_de_obra', valorMaoObra);
+            formData.append('valor_pecas', valorPecasTotal.toFixed(2));
+            formData.append('valor', valorTotal);
+            if (itensArray.length > 0) {
+                formData.append('itensJSON', JSON.stringify(itensArray));
+            }
+            // -----------------------------------
+
             try {
                 for (let i = 0; i < inputFotos.files.length; i++) {
                     const fotoOriginal = inputFotos.files[i];
-                    // Só comprime se for imagem mesmo
                     if (fotoOriginal.type.startsWith('image/')) {
-                        const fotoLeve = await comprimirImagem(fotoOriginal, 1000, 1000, 0.7); // Reduz para no máx 1000px e 70% de qualidade
+                        const fotoLeve = await comprimirImagem(fotoOriginal, 1000, 1000, 0.7); 
                         formData.append('fotos', fotoLeve);
                     } else {
                         formData.append('fotos', fotoOriginal);
@@ -196,6 +267,8 @@
                     alert(`✅ Ordem de Serviço Nº ${osCriada.numero_os} gerada com sucesso!`);
                     
                     document.getElementById('form-os').reset();
+                    document.getElementById('lista-pecas').innerHTML = ''; // Limpa as peças
+                    document.getElementById('valor_total').value = '0.00'; // Zera o total
                     document.getElementById('form-os').style.display = 'none';
                     document.getElementById('info-veiculo').style.display = 'none';
                     document.getElementById('placa-busca').value = '';
