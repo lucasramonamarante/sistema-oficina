@@ -231,8 +231,18 @@ app.post('/ordens-servico', upload.array('fotos', 8), async (req, res) => {
             linksFotos.push(response.data.data.url);
         }
 
-        const totalOS = await OrdemServico.count();
-        const numeroGerado = `${new Date().getFullYear()}${(totalOS + 1).toString().padStart(4, '0')}`;
+        // 🚀 Novo Gerador Inteligente de Número de O.S.
+const ultimaOS = await OrdemServico.findOne({ order: [['id', 'DESC']] });
+let proximoNumero = 1;
+
+if (ultimaOS && ultimaOS.numero_os) {
+    // Pega os últimos 4 dígitos da última OS gerada e soma 1
+    const ultimoSufixo = parseInt(ultimaOS.numero_os.slice(-4));
+    if (!isNaN(ultimoSufixo)) {
+        proximoNumero = ultimoSufixo + 1;
+    }
+}
+const numeroGerado = `${new Date().getFullYear()}${proximoNumero.toString().padStart(4, '0')}`;
 
         // Cria a OS com os novos campos de valores
         const os = await OrdemServico.create({
