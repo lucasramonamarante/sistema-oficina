@@ -87,8 +87,22 @@ OrdemServico.belongsTo(Veiculo);
 OrdemServico.hasMany(ItemOS, { as: 'itens', onDelete: 'CASCADE' });
 ItemOS.belongsTo(OrdemServico);
 
-sequelize.sync({ alter: true })
-    .then(() => console.log('✅ Banco de Dados TiDB Sincronizado e Pronto!'))
+sequelize.sync({ alter: false })
+    .then(async () => {
+        console.log('✅ Banco de Dados TiDB Conectado!');
+        
+        // 🚀 INJEÇÃO DIRETA DAS COLUNAS PELO SERVIDOR
+        try {
+            await sequelize.query("ALTER TABLE OrdemServicos ADD COLUMN valor_mao_de_obra DECIMAL(10,2) DEFAULT 0;");
+            console.log('🔧 Coluna valor_mao_de_obra criada com sucesso!');
+        } catch (e) { /* Se der erro é porque a coluna já existe, segue o jogo */ }
+
+        try {
+            await sequelize.query("ALTER TABLE OrdemServicos ADD COLUMN valor_pecas DECIMAL(10,2) DEFAULT 0;");
+            console.log('🔧 Coluna valor_pecas criada com sucesso!');
+        } catch (e) { /* Se der erro é porque a coluna já existe, segue o jogo */ }
+        
+    })
     .catch(err => console.error('❌ Erro ao sincronizar banco:', err));
 
 // ==========================================
