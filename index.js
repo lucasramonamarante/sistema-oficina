@@ -23,7 +23,7 @@ app.use((req, res, next) => {
 const publicFiles = new Set([
     'index.html', 'login.html', 'cadastro-cliente.html', 'cadastro-veiculo.html',
     'historico.html', 'ordem-servico.html', 'orcamento-rapido.html',
-    'manifest.json', 'sw.js', 'logo.png', 'icon-192.png', 'icon-512.png'
+    'manifest.json', 'sw.js', 'session-check.js', 'logo.png', 'icon-192.png', 'icon-512.png'
 ]);
 app.get('/', (req, res) => res.redirect('/index.html'));
 app.get('/:file', (req, res, next) => {
