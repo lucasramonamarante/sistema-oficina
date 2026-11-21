@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+    <script defer src="session-check.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel - Garagem 184</title>
@@ -15,9 +16,15 @@
         }
         
         // Função para o botão de Sair
-        function fazerLogout() {
-            localStorage.removeItem('autenticado_garagem184');
-            window.location.href = 'login.html';
+        async function fazerLogout() {
+            try {
+                const response = await fetch('/logout', { method: 'POST', credentials: 'same-origin' });
+                if (!response.ok) throw new Error('Falha no logout');
+                localStorage.removeItem('autenticado_garagem184');
+                window.location.replace('login.html');
+            } catch (_) {
+                alert('Não foi possível encerrar sua sessão. Confira sua conexão e tente novamente.');
+            }
         }
     </script>
 
