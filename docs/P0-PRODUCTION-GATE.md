@@ -33,3 +33,7 @@ The app has DATABASE_URL pointing to an external TiDB-compatible database, outsi
 
 Official vendor docs: https://docs.pingcap.com/tidbcloud/backup-and-restore-concepts/
 
+
+## Dependency advisory gate
+
+The lockfile was refreshed on the isolated branch using compatible upgrades only. GitHub Actions must rerun the security-test and audit jobs on the final commit. Never apply breaking `npm audit fix --force` automatically to a customer-facing release.
