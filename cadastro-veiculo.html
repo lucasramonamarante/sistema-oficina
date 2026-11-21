@@ -66,7 +66,10 @@
 
                 select.innerHTML = '<option value="">Selecione o dono do veículo...</option>';
                 clientes.forEach(c => {
-                    select.innerHTML += `<option value="${c.id}">${c.nome} (${c.telefone})</option>`;
+                    const option = document.createElement('option');
+                    option.value = String(c.id);
+                    option.textContent = c.nome + ' (' + c.telefone + ')';
+                    select.appendChild(option);
                 });
 
                 opcoesClientesOriginais = Array.from(select.options);
