@@ -103,7 +103,7 @@
                     
                     const divInfo = document.getElementById('info-veiculo');
                     divInfo.style.display = 'block';
-                    divInfo.innerHTML = `✅ Veículo encontrado: ${veiculo.marca} ${veiculo.modelo} (${veiculo.ano})`;
+                    divInfo.textContent = `✅ Veículo encontrado: ${veiculo.marca} ${veiculo.modelo} (${veiculo.ano})`;
                     
                     document.getElementById('form-os').style.display = 'block';
                 } else {
