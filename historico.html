@@ -91,6 +91,19 @@
         const URL_SERVIDOR = '';
         let listaOS = [];
 
+        // Data from the API is untrusted even after authentication.
+        function escapeHTML(value) {
+            const node = document.createElement('span');
+            node.textContent = value == null ? '' : String(value);
+            return node.innerHTML;
+        }
+        function safeImageUrl(value) {
+            try {
+                const url = new URL(String(value));
+                return url.protocol === 'https:' ? url.href : '';
+            } catch (_) { return ''; }
+        }
+
         async function carregarHistorico() {
             try {
                 const resposta = await fetch(`${URL_SERVIDOR}/ordens-servico`);
@@ -109,11 +122,11 @@
 
                     tbody.innerHTML += `
                         <tr class="linha-os">
-                            <td><strong>${os.numero_os}</strong></td>
+                            <td><strong>${escapeHTML(os.numero_os)}</strong></td>
                             <td>${dataFormatada}</td>
-                            <td style="color: #17a2b8;">${clienteNome}</td>
-                            <td>${placa}</td>
-                            <td style="color: #ffc107;">${os.mecanico || '-'}</td>
+                            <td style="color: #17a2b8;">${escapeHTML(clienteNome)}</td>
+                            <td>${escapeHTML(placa)}</td>
+                            <td style="color: #ffc107;">${escapeHTML(os.mecanico || '-')}</td>
                             <td>R$ ${os.valor ? parseFloat(os.valor).toFixed(2) : '0.00'}</td>
                             <td>
                                 ${botaoFotos}
@@ -147,20 +160,23 @@
             const galeria = document.getElementById('galeria');
             const titulo = document.getElementById('tituloModal');
             
-            titulo.innerText = `📸 Fotos da OS: ${os.numero_os}`;
+            titulo.innerText = `📸 Fotos da OS: ${escapeHTML(os.numero_os)}`;
             galeria.innerHTML = '';
 
             const fotos = [os.foto_1, os.foto_2, os.foto_3, os.foto_4, os.foto_5, os.foto_6, os.foto_7, os.foto_8];
             
             fotos.forEach((url, index) => {
-                if (url) {
-                    galeria.innerHTML += `
-                        <div class="foto-item">
-                            <img src="${url}" alt="Foto ${index + 1}" onclick="window.open('${url}', '_blank')">
-                            <a href="${url}" target="_blank" class="btn-download" download>Download</a>
-                        </div>
-                    `;
-                }
+                const safe = safeImageUrl(url);
+                if (!safe) return;
+                const photoHref = escapeHTML(safe);
+                galeria.innerHTML += `
+                    <div class="foto-item">
+                        <a href="${photoHref}" target="_blank" rel="noopener noreferrer">
+                            <img src="${photoHref}" alt="Foto ${index + 1}">
+                        </a>
+                        <a href="${photoHref}" target="_blank" rel="noopener noreferrer" class="btn-download" download>Download</a>
+                    </div>
+                `;
             });
 
             document.getElementById('modalFotos').style.display = "block";
@@ -209,8 +225,8 @@
                 os.itens.forEach(peca => {
                     linhasPecasHTML += `
                         <tr style="border-bottom: 1px solid #444; background-color: #2a2a2a;">
-                            <td style="padding: 6px 8px;">${peca.nome_peca}</td>
-                            <td style="padding: 6px 8px; text-align: center;">${peca.quantidade}</td>
+                            <td style="padding: 6px 8px;">${escapeHTML(peca.nome_peca)}</td>
+                            <td style="padding: 6px 8px; text-align: center;">${escapeHTML(peca.quantidade)}</td>
                             <td style="padding: 6px 8px; text-align: right;">${parseFloat(peca.valor_unitario).toFixed(2)}</td>
                             <td style="padding: 6px 8px; text-align: right;">${parseFloat(peca.valor_total).toFixed(2)}</td>
                         </tr>`;
@@ -229,7 +245,7 @@
                             <h3 style="color: #ffc107; text-align: center; border-bottom: 1px solid #555; padding-bottom: 10px; text-transform: uppercase;">📸 Registros do Veículo</h3>
                             <div style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 15px;">`;
                     fotos.forEach(fotoUrl => {
-                        secaoFotosHTML += `<img src="${fotoUrl}" style="width: 380px; height: 250px; object-fit: cover; border-radius: 5px; border: 2px solid #555;">`;
+                        secaoFotosHTML += `<img src="${escapeHTML(safeImageUrl(fotoUrl))}" style="width: 380px; height: 250px; object-fit: cover; border-radius: 5px; border: 2px solid #555;">`;
                     });
                     secaoFotosHTML += `</div></div>`;
                 }
@@ -253,7 +269,7 @@
                             <div style="flex: 1; text-align: right;">
                                 <div style="display: inline-block; border: 1px solid #ffc107; padding: 10px 15px; border-radius: 5px; background-color: #000;">
                                     <span style="font-size: 12px; color: #aaa;">Nº OS:</span><br>
-                                    <b style="font-size: 20px; color: #fff;">${os.numero_os}</b>
+                                    <b style="font-size: 20px; color: #fff;">${escapeHTML(os.numero_os)}</b>
                                 </div>
                             </div>
                         </div>
@@ -263,29 +279,29 @@
                                 <span style="font-size: 11px; color: #888;">DATA:</span> <b style="font-size: 14px;">${dataFormatada}</b>
                             </div>
                             <div style="flex: 2; padding: 8px 12px;">
-                                <span style="font-size: 11px; color: #888;">CLIENTE:</span> <b style="font-size: 14px;">${clienteNome}</b>
+                                <span style="font-size: 11px; color: #888;">CLIENTE:</span> <b style="font-size: 14px;">${escapeHTML(clienteNome)}</b>
                             </div>
                         </div>
 
                         <div style="background-color: #333; color: #ffc107; text-align: center; padding: 5px; font-weight: bold; font-size: 12px; border: 1px solid #444; border-bottom: none;">DADOS DO VEÍCULO</div>
                         <div style="display: flex; border: 1px solid #444; margin-bottom: 15px; background-color: #222;">
                             <div style="flex: 1; border-right: 1px solid #444; padding: 8px 12px;">
-                                <span style="font-size: 11px; color: #888;">PLACA:</span> <b style="font-size: 14px; text-transform: uppercase;">${placa}</b>
+                                <span style="font-size: 11px; color: #888;">PLACA:</span> <b style="font-size: 14px; text-transform: uppercase;">${escapeHTML(placa)}</b>
                             </div>
                             <div style="flex: 2; border-right: 1px solid #444; padding: 8px 12px;">
-                                <span style="font-size: 11px; color: #888;">MODELO:</span> <b style="font-size: 14px;">${modelo}</b>
+                                <span style="font-size: 11px; color: #888;">MODELO:</span> <b style="font-size: 14px;">${escapeHTML(modelo)}</b>
                             </div>
                             <div style="flex: 1; padding: 8px 12px;">
-                                <span style="font-size: 11px; color: #888;">ANO:</span> <b style="font-size: 14px;">${ano}</b>
+                                <span style="font-size: 11px; color: #888;">ANO:</span> <b style="font-size: 14px;">${escapeHTML(ano)}</b>
                             </div>
                         </div>
 
                         <div style="display: flex; border: 1px solid #444; margin-bottom: 15px; background-color: #222;">
                             <div style="flex: 1; border-right: 1px solid #444; padding: 8px 12px; text-align: center;">
-                                <span style="font-size: 11px; color: #888;">KM ENTRADA:</span> <b style="font-size: 14px;">${kmEntrada}</b>
+                                <span style="font-size: 11px; color: #888;">KM ENTRADA:</span> <b style="font-size: 14px;">${escapeHTML(kmEntrada)}</b>
                             </div>
                             <div style="flex: 1; padding: 8px 12px; text-align: center;">
-                                <span style="font-size: 11px; color: #888;">KM SAÍDA:</span> <b style="font-size: 14px;">${kmSaida}</b>
+                                <span style="font-size: 11px; color: #888;">KM SAÍDA:</span> <b style="font-size: 14px;">${escapeHTML(kmSaida)}</b>
                             </div>
                         </div>
 
@@ -293,7 +309,7 @@
                             
                             <div style="flex: 1.2; display: flex; flex-direction: column; border: 1px solid #444; background-color: #222;">
                                 <div style="background-color: #333; color: #ffc107; text-align: center; padding: 5px; font-weight: bold; font-size: 12px; border-bottom: 1px solid #444;">DESCRIÇÃO DOS SERVIÇOS</div>
-                                <div style="padding: 12px; white-space: pre-wrap; font-size: 13px; line-height: 1.5; color: #ddd; flex-grow: 1;">${os.descricao}</div>
+                                <div style="padding: 12px; white-space: pre-wrap; font-size: 13px; line-height: 1.5; color: #ddd; flex-grow: 1;">${escapeHTML(os.descricao)}</div>
                             </div>
 
                             <div style="flex: 1; display: flex; flex-direction: column; border: 1px solid #444; background-color: #222;">
@@ -316,7 +332,7 @@
 
                         <div style="display: flex; justify-content: space-between; align-items: flex-end;">
                             <div style="flex: 1; font-size: 12px; color: #888;">
-                                <p><strong>Técnico Responsável:</strong> ${tecnico}</p>
+                                <p><strong>Técnico Responsável:</strong> ${escapeHTML(tecnico)}</p>
                                 <p style="margin-top: 20px;">_________________________________________<br>Assinatura do Cliente</p>
                             </div>
                             
@@ -356,7 +372,7 @@
 
             const opcoesPDF = {
                 margin:       0,
-                filename:     `OS_${os.numero_os}_Garagem184.pdf`,
+                filename:     `OS_${escapeHTML(os.numero_os)}_Garagem184.pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
                 html2canvas:  { scale: 2, useCORS: true, backgroundColor: '#1a1a1a' },
                 jsPDF:        { unit: 'px', format: [850, 1100], orientation: 'portrait' }
