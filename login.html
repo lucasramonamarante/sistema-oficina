@@ -148,10 +148,16 @@
         });
 
         // Se o cara já estiver logado e tentar abrir o login, manda ele direto pro painel
-        window.onload = function() {
-            if (localStorage.getItem('autenticado_garagem184')) {
-                window.location.href = 'index.html';
-            }
+        window.onload = async function() {
+            try {
+                const response = await fetch('/auth/me', { credentials: 'same-origin', cache: 'no-store' });
+                if (response.ok) {
+                    localStorage.setItem('autenticado_garagem184', 'sessao-validada');
+                    window.location.replace('index.html');
+                } else if (response.status === 401) {
+                    localStorage.removeItem('autenticado_garagem184');
+                }
+            } catch (_) { /* login form stays available during a network interruption */ }
         }
     </script>
 </body>

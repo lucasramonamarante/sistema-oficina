@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+    <script defer src="session-check.js"></script>
     <script>
     if (!localStorage.getItem('autenticado_garagem184')) {
         window.location.href = 'login.html';
@@ -102,7 +103,7 @@
                     
                     const divInfo = document.getElementById('info-veiculo');
                     divInfo.style.display = 'block';
-                    divInfo.innerHTML = `✅ Veículo encontrado: ${veiculo.marca} ${veiculo.modelo} (${veiculo.ano})`;
+                    divInfo.textContent = `✅ Veículo encontrado: ${veiculo.marca} ${veiculo.modelo} (${veiculo.ano})`;
                     
                     document.getElementById('form-os').style.display = 'block';
                 } else {

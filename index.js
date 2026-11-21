@@ -1,5 +1,6 @@
 const express = require('express');
-const cors = require('cors');
+const path = require('node:path');
+const { installSecurity } = require('./security');
 const { Sequelize, DataTypes } = require('sequelize');
 const multer = require('multer');
 const axios = require('axios');
@@ -7,12 +8,36 @@ const FormData = require('form-data');
 const bcrypt = require('bcryptjs'); 
 
 const app = express();
-app.use(cors());
-app.use(express.json());
-app.use(express.static(__dirname));
+app.disable('x-powered-by');
+app.set('trust proxy', 1);
+app.use(express.json({ limit: '256kb' }));
+app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Cache-Control', 'no-store');
+    next();
+});
 
-const upload = multer({ storage: multer.memoryStorage() });
-const IMGBB_API_KEY = '75f4d0f49c995f73237ab9a2f6e4a177';
+// Never expose the backend source, node_modules, or configuration as static files.
+const publicFiles = new Set([
+    'index.html', 'login.html', 'cadastro-cliente.html', 'cadastro-veiculo.html',
+    'historico.html', 'ordem-servico.html', 'orcamento-rapido.html',
+    'manifest.json', 'sw.js', 'session-check.js', 'logo.png', 'icon-192.png', 'icon-512.png'
+]);
+app.get('/', (req, res) => res.redirect('/index.html'));
+app.get('/:file', (req, res, next) => {
+    const file = req.params.file;
+    if (!publicFiles.has(file)) return next();
+    return res.sendFile(path.join(__dirname, file));
+});
+
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { files: 8, fileSize: 8 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => cb(null, /^image\/(jpeg|png|webp|gif)$/.test(file.mimetype))
+});
+const IMGBB_API_KEY = process.env.IMGBB_API_KEY;
 
 // ==========================================
 // 🔌 Conexão Segura com o Banco (TiDB Cloud)
@@ -23,7 +48,7 @@ const sequelize = new Sequelize(process.env.DATABASE_URL, {
     dialectOptions: {
         ssl: {
             require: true,
-            rejectUnauthorized: false 
+            rejectUnauthorized: true 
         }
     }
 });
@@ -87,23 +112,10 @@ OrdemServico.belongsTo(Veiculo);
 OrdemServico.hasMany(ItemOS, { as: 'itens', onDelete: 'CASCADE' });
 ItemOS.belongsTo(OrdemServico);
 
-sequelize.sync({ alter: false })
-    .then(async () => {
-        console.log('✅ Banco de Dados TiDB Conectado!');
-        
-        // 🚀 INJEÇÃO DIRETA DAS COLUNAS PELO SERVIDOR
-        try {
-            await sequelize.query("ALTER TABLE OrdemServicos ADD COLUMN valor_mao_de_obra DECIMAL(10,2) DEFAULT 0;");
-            console.log('🔧 Coluna valor_mao_de_obra criada com sucesso!');
-        } catch (e) { /* Se der erro é porque a coluna já existe, segue o jogo */ }
-
-        try {
-            await sequelize.query("ALTER TABLE OrdemServicos ADD COLUMN valor_pecas DECIMAL(10,2) DEFAULT 0;");
-            console.log('🔧 Coluna valor_pecas criada com sucesso!');
-        } catch (e) { /* Se der erro é porque a coluna já existe, segue o jogo */ }
-        
-    })
-    .catch(err => console.error('❌ Erro ao sincronizar banco:', err));
+// Production startup must never mutate the schema implicitly.
+sequelize.authenticate()
+    .then(() => console.log('✅ Banco de dados conectado (verificação sem alterações).'))
+    .catch(err => console.error('❌ Falha na conexão do banco de dados:', err.message));
 
 // ==========================================
 // 🚀 ROTAS
@@ -113,55 +125,24 @@ app.get('/', (req, res) => {
     res.send('🚀 API Garagem 184 PRO - Online e Conectada ao TiDB!');
 });
 
-// 1. Rota para CRIAR o administrador (Setup Inicial)
-app.post('/setup-admin', async (req, res) => {
-    try {
-        const { email, senha } = req.body;
-        
-        // 🔒 TRAVA REATIVADA: Bloqueia a criação de novos usuários
-        const adminExistente = await Admin.findOne();
-        if (adminExistente) {
-            return res.status(400).json({ erro: 'O sistema já possui administradores cadastrados. Acesso negado!' });
-        }
+// Setup is permanently disabled over HTTP. Provision privileged accounts offline.
+app.post('/setup-admin', (_req, res) => res.status(410).json({ erro: 'Cadastro inicial indisponível.' }));
 
-        const salt = await bcrypt.genSalt(10);
-        const senhaCriptografada = await bcrypt.hash(senha, salt);
-
-        await Admin.create({ email, senha: senhaCriptografada });
-        res.status(201).json({ mensagem: '✅ Conta de administrador criada com sucesso!' });
-    } catch (erro) {
-        console.error("🚨 ERRO DETALHADO NO SETUP-ADMIN:", erro); 
-        res.status(500).json({ erro: 'Erro ao criar administrador. Verifique os logs do servidor.' });
-    }
-});
-
-// 2. Rota de LOGIN
-app.post('/login', async (req, res) => {
-    try {
-        const { email, senha } = req.body;
-        
-        const admin = await Admin.findOne({ where: { email } });
-        if (!admin) {
-            return res.status(404).json({ erro: 'E-mail não encontrado.' });
-        }
-
-        const senhaCorreta = await bcrypt.compare(senha, admin.senha);
-        if (!senhaCorreta) {
-            return res.status(401).json({ erro: 'Senha incorreta!' });
-        }
-
-        res.status(200).json({ mensagem: 'Login aprovado!', token: 'acesso-liberado-garagem184' });
-    } catch (erro) {
-        res.status(500).json({ erro: 'Erro no servidor.' });
-    }
-});
+// Login, logout, CSRF checks, verified sessions and default-deny for all APIs.
+installSecurity(app, Admin);
 
 // 3. Rota para ALTERAR A SENHA
 app.post('/alterar-senha', async (req, res) => {
     try {
         const { email, senhaAtual, novaSenha } = req.body;
 
-        const admin = await Admin.findOne({ where: { email: email } });
+        if (typeof email !== 'string' || email.trim().toLowerCase() !== req.authAdmin.email.toLowerCase()) {
+            return res.status(403).json({ erro: 'Você só pode alterar a própria senha.' });
+        }
+        if (typeof senhaAtual !== 'string' || typeof novaSenha !== 'string' || novaSenha.length < 12 || novaSenha.length > 128) {
+            return res.status(400).json({ erro: 'A nova senha precisa ter de 12 a 128 caracteres.' });
+        }
+        const admin = req.authAdmin;
         if (!admin) {
             return res.status(404).json({ erro: 'Administrador não encontrado.' });
         }
@@ -222,6 +203,7 @@ app.post('/ordens-servico', upload.array('fotos', 8), async (req, res) => {
     try {
         const { VeiculoId, descricao, valor_mao_de_obra, valor_pecas, valor, mecanico, km_entrada, km_saida, itensJSON } = req.body;
         const files = req.files || [];
+        if (files.length && !IMGBB_API_KEY) return res.status(503).json({ erro: 'Upload indisponível: configuração de imagens ausente.' });
         const linksFotos = [];
 
         for (const file of files) {
