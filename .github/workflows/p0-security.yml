@@ -1,0 +1,26 @@
+name: P0 security checks
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [security/p0-hardening-20261121]
+
+permissions:
+  contents: read
+
+jobs:
+  security-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts
+      - name: Unit and HTTP middleware tests
+        run: npm test
+      - name: Dependency advisories
+        run: npm audit --omit=dev --audit-level=high
